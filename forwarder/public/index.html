@@ -189,6 +189,11 @@
 
       <!-- State tab -->
       <div id="tab-state" class="tab-pane active card-body" style="padding:0">
+        <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748">
+          <input id="stateSearch" type="text" placeholder="🔍 Cari path..." oninput="renderStateTable()"
+            style="flex:1;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:5px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
+          <span id="stateCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
+        </div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Waktu</th><th>Path File</th></tr></thead>
@@ -199,13 +204,16 @@
 
       <!-- Responses tab -->
       <div id="tab-responses" class="tab-pane card-body" style="padding:0">
-        <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748">
+        <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748;flex-wrap:wrap">
           <label style="margin:0">Filter:</label>
           <select id="respFilter" onchange="renderResponses()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:.78rem">
             <option value="ALL">Semua</option>
             <option value="OK">Berhasil</option>
             <option value="FAIL">Gagal</option>
           </select>
+          <input id="respSearch" type="text" placeholder="🔍 Cari path..." oninput="renderResponses()"
+            style="flex:1;min-width:160px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
+          <span id="respCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
         </div>
         <div class="table-wrap">
           <table>
@@ -288,6 +296,7 @@
 <script>
   // ─── State ─────────────────────────────────────────────
   let allResponses = [];
+  let allState = [];
   let allFiles = [];
   let countdown = 10;
   let countdownTimer;
@@ -354,14 +363,8 @@
       }
 
       // State table
-      const tbody = document.getElementById('stateTable');
-      if (d.recentSent.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Belum ada data terkirim</td></tr>';
-      } else {
-        tbody.innerHTML = d.recentSent.map(s =>
-          `<tr><td style="white-space:nowrap;color:#94a3b8;font-size:.72rem">${fmtTime(s.ts)}</td><td class="path-cell">${esc(s.path)}</td></tr>`
-        ).join('');
-      }
+      allState = d.recentSent || [];
+      renderStateTable();
 
       // Schedule
       const sl = document.getElementById('scheduleList');
@@ -377,6 +380,20 @@
     } catch (e) { console.error('status error', e); }
   }
 
+  function renderStateTable() {
+    const q = (document.getElementById('stateSearch').value || '').toLowerCase();
+    const data = q ? allState.filter(s => s.path.toLowerCase().includes(q)) : allState;
+    const tbody = document.getElementById('stateTable');
+    document.getElementById('stateCount').textContent = q ? `${data.length} dari ${allState.length}` : `${allState.length} total`;
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">${q ? 'Tidak ada hasil untuk "' + esc(q) + '"' : 'Belum ada data terkirim'}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = data.map(s =>
+      `<tr><td style="white-space:nowrap;color:#94a3b8;font-size:.72rem">${fmtTime(s.ts)}</td><td class="path-cell">${esc(s.path)}</td></tr>`
+    ).join('');
+  }
+
   // ─── Load responses ─────────────────────────────────────
   async function loadResponses() {
     try {
@@ -387,7 +404,10 @@
 
   function renderResponses() {
     const filter = document.getElementById('respFilter').value;
-    const data   = filter === 'ALL' ? allResponses : allResponses.filter(r => r.status === filter);
+    const q      = (document.getElementById('respSearch').value || '').toLowerCase();
+    let data = filter === 'ALL' ? allResponses : allResponses.filter(r => r.status === filter);
+    if (q) data = data.filter(r => r.path.toLowerCase().includes(q));
+    document.getElementById('respCount').textContent = q || filter !== 'ALL' ? `${data.length} hasil` : '';
     const tbody  = document.getElementById('respTable');
     if (data.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Tidak ada data</td></tr>';
