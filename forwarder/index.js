@@ -394,6 +394,48 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'POST' && pathname === '/api/delete-state') {
+    let body;
+    try { body = JSON.parse(await readBody(req)); }
+    catch (_) { jsonResponse(res, 400, { error: 'Body JSON tidak valid' }); return; }
+
+    const { paths: delPaths } = body;
+    if (!Array.isArray(delPaths) || delPaths.length === 0) {
+      jsonResponse(res, 400, { error: 'Harus ada paths (array)' }); return;
+    }
+    let deleted = 0;
+    for (const p of delPaths) {
+      const mp = markerPath(p);
+      if (fs.existsSync(mp)) { try { fs.unlinkSync(mp); deleted++; } catch (_) {} }
+    }
+    log(`🗑️ Delete state: ${deleted}/${delPaths.length} file(s) dihapus dari UI`);
+    jsonResponse(res, 200, { message: `${deleted} state berhasil dihapus.`, deleted });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/router-logs') {
+    const lines = parseInt(url.searchParams.get('lines') || '400', 10);
+    try {
+      if (!fs.existsSync(ROUTER_LOGS_DIR)) {
+        jsonResponse(res, 200, { available: false, content: '' });
+        return;
+      }
+      const files = fs.readdirSync(ROUTER_LOGS_DIR)
+        .filter(f => !fs.statSync(path.join(ROUTER_LOGS_DIR, f)).isDirectory())
+        .sort();
+      let content = '';
+      for (const f of files) {
+        try { content += fs.readFileSync(path.join(ROUTER_LOGS_DIR, f), 'utf8'); } catch (_) {}
+      }
+      const allLines = content.split('\n');
+      const tail = allLines.slice(Math.max(0, allLines.length - lines)).join('\n');
+      jsonResponse(res, 200, { available: true, content: tail });
+    } catch (err) {
+      jsonResponse(res, 500, { error: err.message });
+    }
+    return;
+  }
+
   res.writeHead(404); res.end('Not found');
 });
 

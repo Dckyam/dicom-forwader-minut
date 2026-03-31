@@ -185,6 +185,7 @@
         <button class="tab-btn active" onclick="switchTab('state',this)">State</button>
         <button class="tab-btn" onclick="switchTab('responses',this)">Responses SatuSehat</button>
         <button class="tab-btn" onclick="switchTab('log',this)">Log</button>
+        <button class="tab-btn" onclick="switchTab('router-log',this)">Log Router</button>
       </div>
 
       <!-- State tab -->
@@ -230,6 +231,15 @@
         </div>
         <div class="log-area" id="logArea">Memuat log...</div>
       </div>
+
+      <!-- Router Log tab -->
+      <div id="tab-router-log" class="tab-pane card-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:.75rem;color:#94a3b8">Log langsung dari container dicom-router</span>
+          <button class="btn btn-outline" onclick="loadRouterLog()">↻ Refresh</button>
+        </div>
+        <div class="log-area" id="routerLogArea" style="color:#fbbf24">Klik Refresh untuk memuat log router...</div>
+      </div>
     </div>
 
     <!-- RIGHT: Send panel + Schedule -->
@@ -269,9 +279,11 @@
                 <tbody id="fileTable"></tbody>
               </table>
             </div>
-            <div style="display:flex;gap:10px;margin-top:12px">
+            <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-success" onclick="sendSelected()" id="btnSend">✅ Kirim Terpilih</button>
               <button class="btn btn-outline" onclick="selectUnsent()">Pilih Belum Terkirim</button>
+              <button class="btn btn-danger" onclick="deleteStateSelected()" id="btnDeleteState">🗑️ Hapus State Terpilih</button>
+              <button class="btn btn-outline" onclick="deleteAllStatePage()" style="border-color:#f87171;color:#f87171">🗑️ Hapus Semua Terkirim</button>
             </div>
           </div>
         </div>
@@ -311,6 +323,7 @@
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
     if (name === 'log') loadLog();
+    if (name === 'router-log') loadRouterLog();
   }
 
   // ─── Fetch helpers ──────────────────────────────────────
@@ -437,6 +450,57 @@
       el.textContent = txt;
       el.scrollTop = el.scrollHeight;
     } catch (e) { document.getElementById('logArea').textContent = 'Gagal memuat log.'; }
+  }
+
+  async function loadRouterLog() {
+    const el = document.getElementById('routerLogArea');
+    el.textContent = 'Memuat...';
+    try {
+      const d = await apiFetch('/api/router-logs?lines=400');
+      if (!d.available) {
+        el.textContent = '⚠️ Log router tidak tersedia.\nPastikan volume ./logs:/router-logs:ro sudah di-mount di docker-compose.';
+        return;
+      }
+      el.textContent = d.content || '(Log kosong)';
+      el.scrollTop = el.scrollHeight;
+    } catch (e) { el.textContent = 'Gagal memuat log router: ' + e.message; }
+  }
+
+  // ─── Delete state ─────────────────────────────────────────
+  async function deleteStateSelected() {
+    const checked = [...document.querySelectorAll('.file-cb:checked')];
+    if (checked.length === 0) { showToast('Pilih minimal satu file.'); return; }
+    if (!confirm(`Hapus state ${checked.length} file? File-file ini akan bisa dikirim ulang.`)) return;
+    const paths = checked.map(cb => allFiles[parseInt(cb.dataset.i)].path);
+    document.getElementById('btnDeleteState').disabled = true;
+    try {
+      const r = await fetch('/api/delete-state', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths })
+      });
+      const d = await r.json();
+      showToast(d.message || d.error);
+      await loadFiles();
+    } catch (e) { showToast('Error: ' + e.message); }
+    document.getElementById('btnDeleteState').disabled = false;
+  }
+
+  async function deleteAllStatePage() {
+    const date = document.getElementById('dateInput').value;
+    if (!date) { showToast('Pilih tanggal terlebih dahulu.'); return; }
+    const sentFiles = allFiles.filter(f => f.sent);
+    if (sentFiles.length === 0) { showToast('Tidak ada file Terkirim di tanggal ini.'); return; }
+    if (!confirm(`Hapus semua state (${sentFiles.length} file) di tanggal ${date}?\nSemua file ini akan bisa dikirim ulang.`)) return;
+    const paths = sentFiles.map(f => f.path);
+    try {
+      const r = await fetch('/api/delete-state', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths })
+      });
+      const d = await r.json();
+      showToast(d.message || d.error);
+      await loadFiles();
+    } catch (e) { showToast('Error: ' + e.message); }
   }
 
   // ─── File browser ─────────────────────────────────────────
