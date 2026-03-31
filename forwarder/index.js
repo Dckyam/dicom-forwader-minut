@@ -48,7 +48,7 @@ function markSent(ftpPath) {
 // ---------- SEND FUNCTION ----------
 function sendDicom(localFile) {
   return new Promise((resolve, reject) => {
-    const args = ['-v', '-aec', ROUTER_AET, ROUTER_HOST, ROUTER_PORT, localFile];
+    const args = ['+xa', '-v', '-aec', ROUTER_AET, ROUTER_HOST, ROUTER_PORT, localFile];
     log('➡️  Running storescu', args.join(' '));
     const proc = spawn('storescu', args);
     let stderr = '';
