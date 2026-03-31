@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DICOM Forwarder Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+    header {
+      background: linear-gradient(135deg, #1a2035 0%, #1e3a5f 100%);
+      padding: 16px 24px;
+      display: flex; align-items: center; gap: 14px;
+      border-bottom: 1px solid #2d3748;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: .5px; }
+    header .subtitle { font-size: .75rem; color: #94a3b8; margin-top: 2px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px; font-size: .75rem; font-weight: 600;
+    }
+    .badge.scanning { background: #1a4a2e; color: #4ade80; }
+    .badge.idle     { background: #1e293b; color: #64748b; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.pulse { background: #4ade80; animation: pulse 1.2s ease-in-out infinite; }
+    .dot.idle  { background: #475569; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+    .grid { display: grid; gap: 16px; }
+    .grid-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    .grid-2 { grid-template-columns: 1fr 1.4fr; gap: 16px; }
+    @media(max-width:900px){ .grid-2{ grid-template-columns: 1fr; } }
+
+    .card {
+      background: #1a1f2e; border-radius: 10px; border: 1px solid #2d3748;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 16px; border-bottom: 1px solid #2d3748;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .8rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .8px;
+    }
+    .card-body { padding: 16px; }
+
+    /* Stats */
+    .stat-card { text-align: center; padding: 20px 16px; }
+    .stat-num { font-size: 2.2rem; font-weight: 700; color: #60a5fa; }
+    .stat-label { font-size: .75rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .6px; }
+
+    /* Tabs */
+    .tabs { display: flex; border-bottom: 1px solid #2d3748; background: #151921; }
+    .tab-btn {
+      padding: 10px 18px; font-size: .82rem; font-weight: 500; cursor: pointer;
+      border: none; background: none; color: #64748b; border-bottom: 2px solid transparent;
+      transition: color .2s, border-color .2s;
+    }
+    .tab-btn:hover { color: #cbd5e1; }
+    .tab-btn.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    th { position: sticky; top: 0; background: #1a1f2e; color: #64748b; font-weight: 600;
+         text-transform: uppercase; letter-spacing: .5px; padding: 8px 12px; text-align: left;
+         border-bottom: 1px solid #2d3748; }
+    td { padding: 7px 12px; border-bottom: 1px solid #1e293b; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1e2639; }
+    .path-cell { font-family: monospace; font-size: .72rem; color: #93c5fd; word-break: break-all; }
+    .status-ok   { color: #4ade80; font-weight: 600; }
+    .status-fail { color: #f87171; font-weight: 600; }
+    .status-skip { color: #94a3b8; }
+
+    /* Checkbox col */
+    .cb-col { width: 36px; text-align: center; }
+    input[type=checkbox] { accent-color: #60a5fa; width: 14px; height: 14px; cursor: pointer; }
+
+    /* Log area */
+    .log-area {
+      background: #0d1117; font-family: monospace; font-size: .72rem; line-height: 1.6;
+      padding: 14px; border-radius: 6px; white-space: pre-wrap; word-break: break-all;
+      max-height: 360px; overflow-y: auto; color: #a3e635;
+      border: 1px solid #1e293b;
+    }
+
+    /* Send panel */
+    .send-panel { display: flex; flex-direction: column; gap: 14px; }
+    .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: .75rem; color: #94a3b8; font-weight: 500; }
+    input[type=date] {
+      background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+      padding: 8px 12px; border-radius: 6px; font-size: .84rem; cursor: pointer;
+    }
+    input[type=date]:focus { outline: none; border-color: #60a5fa; }
+
+    .btn {
+      padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer;
+      font-size: .82rem; font-weight: 600; transition: opacity .15s;
+    }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary  { background: #2563eb; color: #fff; }
+    .btn-success  { background: #16a34a; color: #fff; }
+    .btn-danger   { background: #dc2626; color: #fff; }
+    .btn-outline  { background: transparent; border: 1px solid #334155; color: #cbd5e1; }
+    .btn:not(:disabled):hover { opacity: .85; }
+
+    .file-list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px; font-size: .78rem; color: #94a3b8;
+    }
+    .select-all-row { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: #94a3b8; margin-bottom: 6px; }
+
+    /* Schedule list */
+    .schedule-list { display: flex; flex-direction: column; gap: 6px; }
+    .schedule-item {
+      display: flex; align-items: center; gap: 10px;
+      background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: .78rem;
+    }
+    .schedule-item .time { font-weight: 700; color: #fbbf24; min-width: 55px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #1e3a5f; border: 1px solid #3b82f6; color: #e2e8f0;
+      padding: 12px 20px; border-radius: 8px; font-size: .82rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      transform: translateY(80px); opacity: 0; transition: all .3s;
+      z-index: 9999; max-width: 380px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🏥 DICOM Forwarder Dashboard</h1>
+    <div class="subtitle">SatuSehat Integration Monitor</div>
+  </div>
+  <div id="scanBadge" class="badge idle"><span class="dot idle" id="scanDot"></span><span id="scanLabel">Idle</span></div>
+  <div style="margin-left:auto;font-size:.75rem;color:#64748b">
+    Auto-refresh: <span id="refreshCountdown">10</span>s
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Stats Row -->
+  <div class="grid grid-4" style="margin-bottom:16px">
+    <div class="card stat-card">
+      <div class="stat-num" id="statTotal">—</div>
+      <div class="stat-label">Total Terkirim</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-num" id="statOk" style="color:#4ade80">—</div>
+      <div class="stat-label">Berhasil (session)</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-num" id="statFail" style="color:#f87171">—</div>
+      <div class="stat-label">Gagal (session)</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-num" id="statLast" style="font-size:1rem;color:#a78bfa">—</div>
+      <div class="stat-label">Scan Terakhir</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+
+    <!-- LEFT: Tabs (State / Responses / Log) -->
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('state',this)">State</button>
+        <button class="tab-btn" onclick="switchTab('responses',this)">Responses SatuSehat</button>
+        <button class="tab-btn" onclick="switchTab('log',this)">Log</button>
+      </div>
+
+      <!-- State tab -->
+      <div id="tab-state" class="tab-pane active card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Waktu</th><th>Path File</th></tr></thead>
+            <tbody id="stateTable"><tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Responses tab -->
+      <div id="tab-responses" class="tab-pane card-body" style="padding:0">
+        <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748">
+          <label style="margin:0">Filter:</label>
+          <select id="respFilter" onchange="renderResponses()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:.78rem">
+            <option value="ALL">Semua</option>
+            <option value="OK">Berhasil</option>
+            <option value="FAIL">Gagal</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Waktu</th><th>Status</th><th>Path</th><th>Detail</th></tr></thead>
+            <tbody id="respTable"><tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Log tab -->
+      <div id="tab-log" class="tab-pane card-body">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn btn-outline" onclick="loadLog()">↻ Refresh Log</button>
+        </div>
+        <div class="log-area" id="logArea">Memuat log...</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Send panel + Schedule -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- Send Panel -->
+      <div class="card">
+        <div class="card-header">
+          📤 Kirim Manual
+          <span id="sendStatus" style="font-size:.72rem;color:#fbbf24"></span>
+        </div>
+        <div class="card-body send-panel">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Pilih Tanggal</label>
+              <input type="date" id="dateInput" />
+            </div>
+            <button class="btn btn-primary" onclick="loadFiles()">🔍 Lihat File</button>
+          </div>
+
+          <div id="fileListSection" style="display:none">
+            <div class="file-list-header">
+              <span id="fileCount">0 file ditemukan</span>
+              <span id="unsentCount"></span>
+            </div>
+            <div class="select-all-row">
+              <input type="checkbox" id="selectAll" onchange="toggleAll(this)" />
+              <label for="selectAll" style="cursor:pointer">Pilih Semua yang Belum Terkirim</label>
+              <span id="selectedCount" style="margin-left:auto;color:#60a5fa"></span>
+            </div>
+            <div class="table-wrap" style="max-height:280px">
+              <table>
+                <thead><tr><th class="cb-col"><input type="checkbox" id="selectAllTop" onchange="toggleAll(this)" /></th><th>Path File</th><th>Status</th></tr></thead>
+                <tbody id="fileTable"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px">
+              <button class="btn btn-success" onclick="sendSelected()" id="btnSend">✅ Kirim Terpilih</button>
+              <button class="btn btn-outline" onclick="selectUnsent()">Pilih Belum Terkirim</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schedule Info -->
+      <div class="card">
+        <div class="card-header">⏰ Jadwal Otomatis</div>
+        <div class="card-body">
+          <div class="schedule-list" id="scheduleList">
+            <div style="color:#64748b;font-size:.78rem">Memuat jadwal...</div>
+          </div>
+          <div style="margin-top:12px;font-size:.72rem;color:#64748b">
+            Setiap hari: 06:00 · 12:00 · 18:00 · 00:00 — mengecek folder hari ini
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ─── State ─────────────────────────────────────────────
+  let allResponses = [];
+  let allFiles = [];
+  let countdown = 10;
+  let countdownTimer;
+
+  // ─── Tab switcher ───────────────────────────────────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'log') loadLog();
+  }
+
+  // ─── Fetch helpers ──────────────────────────────────────
+  async function apiFetch(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  // ─── Format helpers ─────────────────────────────────────
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('id-ID') + ' ' + d.toLocaleTimeString('id-ID');
+  }
+  function timeSince(iso) {
+    if (!iso) return '—';
+    const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (secs < 60) return secs + 'd lalu';
+    if (secs < 3600) return Math.floor(secs/60) + 'm lalu';
+    if (secs < 86400) return Math.floor(secs/3600) + 'j lalu';
+    return Math.floor(secs/86400) + 'h lalu';
+  }
+
+  // ─── Load status ────────────────────────────────────────
+  async function loadStatus() {
+    try {
+      const d = await apiFetch('/api/status');
+
+      // Scan badge
+      const badge = document.getElementById('scanBadge');
+      const dot   = document.getElementById('scanDot');
+      const lbl   = document.getElementById('scanLabel');
+      if (d.scanning) {
+        badge.className = 'badge scanning'; dot.className = 'dot pulse'; lbl.textContent = 'Scanning...';
+      } else {
+        badge.className = 'badge idle'; dot.className = 'dot idle'; lbl.textContent = 'Idle';
+      }
+
+      document.getElementById('statTotal').textContent = d.totalSent;
+      document.getElementById('statLast').textContent  = timeSince(d.lastScanTime);
+
+      // State table
+      const tbody = document.getElementById('stateTable');
+      if (d.recentSent.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Belum ada data terkirim</td></tr>';
+      } else {
+        tbody.innerHTML = d.recentSent.map(s =>
+          `<tr><td style="white-space:nowrap;color:#94a3b8;font-size:.72rem">${fmtTime(s.ts)}</td><td class="path-cell">${esc(s.path)}</td></tr>`
+        ).join('');
+      }
+
+      // Schedule
+      const sl = document.getElementById('scheduleList');
+      if (d.scheduledScans && d.scheduledScans.length) {
+        sl.innerHTML = d.scheduledScans.map(iso => {
+          const t = new Date(iso);
+          const hhmm = t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          const delay = Math.floor((t - Date.now()) / 60000);
+          return `<div class="schedule-item"><span class="time">${hhmm}</span><span style="color:#cbd5e1">${t.toLocaleDateString('id-ID')}</span><span style="margin-left:auto;color:#64748b">&plusmn;${delay}m lagi</span></div>`;
+        }).join('');
+      }
+
+    } catch (e) { console.error('status error', e); }
+  }
+
+  // ─── Load responses ─────────────────────────────────────
+  async function loadResponses() {
+    try {
+      allResponses = await apiFetch('/api/responses?limit=500');
+      // Stats
+      const ok   = allResponses.filter(r => r.status === 'OK').length;
+      const fail = allResponses.filter(r => r.status === 'FAIL').length;
+      document.getElementById('statOk').textContent   = ok;
+      document.getElementById('statFail').textContent = fail;
+      renderResponses();
+    } catch (e) { console.error('responses error', e); }
+  }
+
+  function renderResponses() {
+    const filter = document.getElementById('respFilter').value;
+    const data   = filter === 'ALL' ? allResponses : allResponses.filter(r => r.status === filter);
+    const tbody  = document.getElementById('respTable');
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Tidak ada data</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.slice(0, 300).map(r => {
+      const cls = r.status === 'OK' ? 'status-ok' : 'status-fail';
+      const detail = r.detail ? esc(r.detail.substring(0, 120)) : '';
+      return `<tr>
+        <td style="white-space:nowrap;color:#94a3b8;font-size:.7rem">${fmtTime(r.ts)}</td>
+        <td class="${cls}">${r.status}</td>
+        <td class="path-cell">${esc(r.path)}</td>
+        <td style="font-size:.7rem;color:#94a3b8;max-width:200px;overflow:hidden;text-overflow:ellipsis">${detail}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ─── Load log ────────────────────────────────────────────
+  async function loadLog() {
+    try {
+      const r = await fetch('/api/logs?lines=300');
+      const txt = await r.text();
+      const el = document.getElementById('logArea');
+      el.textContent = txt;
+      el.scrollTop = el.scrollHeight;
+    } catch (e) { document.getElementById('logArea').textContent = 'Gagal memuat log.'; }
+  }
+
+  // ─── File browser ─────────────────────────────────────────
+  async function loadFiles() {
+    const date = document.getElementById('dateInput').value;
+    if (!date) { showToast('Pilih tanggal terlebih dahulu.'); return; }
+    document.getElementById('sendStatus').textContent = 'Memuat daftar file...';
+    try {
+      const d = await apiFetch(`/api/files?date=${date}`);
+      allFiles = d.files || [];
+      renderFileTable();
+      document.getElementById('fileListSection').style.display = 'block';
+      document.getElementById('fileCount').textContent = `${allFiles.length} file ditemukan`;
+      const unsent = allFiles.filter(f => !f.sent).length;
+      document.getElementById('unsentCount').textContent = `${unsent} belum terkirim`;
+      document.getElementById('sendStatus').textContent = '';
+    } catch (e) {
+      document.getElementById('sendStatus').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  function renderFileTable() {
+    const tbody = document.getElementById('fileTable');
+    if (allFiles.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">Tidak ada file di tanggal ini</td></tr>';
+      return;
+    }
+    tbody.innerHTML = allFiles.map((f, i) =>
+      `<tr>
+        <td class="cb-col"><input type="checkbox" class="file-cb" data-i="${i}" onchange="updateSelectedCount()" ${f.sent ? '' : ''} /></td>
+        <td class="path-cell">${esc(f.path)}</td>
+        <td>${f.sent ? '<span class="status-skip">Terkirim</span>' : '<span style="color:#fbbf24">Belum</span>'}</td>
+      </tr>`
+    ).join('');
+    updateSelectedCount();
+  }
+
+  function toggleAll(master) {
+    document.querySelectorAll('.file-cb').forEach(cb => cb.checked = master.checked);
+    document.getElementById('selectAll').checked    = master.checked;
+    document.getElementById('selectAllTop').checked = master.checked;
+    updateSelectedCount();
+  }
+
+  function selectUnsent() {
+    document.querySelectorAll('.file-cb').forEach((cb, i) => {
+      cb.checked = !allFiles[i].sent;
+    });
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const n = document.querySelectorAll('.file-cb:checked').length;
+    document.getElementById('selectedCount').textContent = n > 0 ? `${n} dipilih` : '';
+  }
+
+  async function sendSelected() {
+    const date = document.getElementById('dateInput').value;
+    const checked = [...document.querySelectorAll('.file-cb:checked')];
+    if (checked.length === 0) { showToast('Pilih minimal satu file.'); return; }
+    const paths = checked.map(cb => allFiles[parseInt(cb.dataset.i)].path);
+
+    document.getElementById('btnSend').disabled = true;
+    document.getElementById('sendStatus').textContent = 'Mengirim...';
+
+    try {
+      const r = await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths, date })
+      });
+      const d = await r.json();
+      showToast(d.message || d.error);
+      document.getElementById('sendStatus').textContent = d.message || '';
+    } catch (e) {
+      showToast('Error: ' + e.message);
+      document.getElementById('sendStatus').textContent = '';
+    }
+    document.getElementById('btnSend').disabled = false;
+  }
+
+  // ─── Toast ────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 4000);
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ─── Auto-refresh ─────────────────────────────────────────
+  function startCountdown() {
+    clearInterval(countdownTimer);
+    countdown = 10;
+    countdownTimer = setInterval(() => {
+      countdown--;
+      document.getElementById('refreshCountdown').textContent = countdown;
+      if (countdown <= 0) {
+        loadStatus();
+        loadResponses();
+        countdown = 10;
+      }
+    }, 1000);
+  }
+
+  // Set default date to today
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm   = String(today.getMonth()+1).padStart(2,'0');
+  const dd   = String(today.getDate()).padStart(2,'0');
+  document.getElementById('dateInput').value = `${yyyy}-${mm}-${dd}`;
+
+  // Initial load
+  loadStatus();
+  loadResponses();
+  startCountdown();
+</script>
+</body>
+</html>

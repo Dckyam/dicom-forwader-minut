@@ -24,6 +24,8 @@ services:
     build: ./forwarder
     container_name: dicom-forwarder-minut
     restart: unless-stopped
+    ports:
+      - "13003:3000"
     volumes:
       - "./state:/state"
     environment:
@@ -36,7 +38,7 @@ services:
       - ROUTER_HOST=dicom-router
       - ROUTER_PORT=11112
       - MAX_RETRIES=3
-      - SCAN_INTERVAL=120000
+      - UI_PORT=3000
     depends_on:
       - dicom-router
     networks:
