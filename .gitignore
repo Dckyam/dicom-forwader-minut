@@ -1,0 +1,12 @@
+# Node modules
+forwarder/node_modules/
+forwarder/package-lock.json
+
+# State & logs (runtime data, tidak perlu di-commit)
+state/
+logs/
+out/
+
+# Temp
+*.tmp
+ftp_test.js

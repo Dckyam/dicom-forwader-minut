@@ -1,0 +1,8 @@
+{
+  "name": "dicom-forwarder",
+  "version": "2.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "basic-ftp": "^5.0.5"
+  }
+}

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  dicom-router:
+    image: registry.dto.kemkes.go.id/pub/dicom-router:latest
+    container_name: dicom-router
+    restart: always
+    ports:
+      - "11113:11112"
+      - "8081:8080"
+    environment:
+      - ORG_ID=100027444
+      - CLIENT=tQzkZ68MPzmbPUhkRGL2WcRRVA5n9kF2VCX2B27ZCfwD6pcq
+      - SECRET=GMPb54nFM0Y8nGySY4vJCAm2x3Rw8WBlXCU4rGZJt7uHFb2SNjj6rahYPfNxkcRf
+      - URL=https://api-satusehat.kemkes.go.id
+      - AE_TITLE=DCMROUTER
+    volumes:
+      - "./out:/app/out"
+      - "./logs:/app/logs"
+    networks:
+      - dicom-net
+
+  dicom-forwarder:
+    build: ./forwarder
+    container_name: dicom-forwarder
+    restart: unless-stopped
+    volumes:
+      - "./state:/state"
+    environment:
+      - FTP_HOST=10.100.1.22
+      - FTP_PORT=2121
+      - FTP_USER=admin
+      - FTP_PASS=J4nganM4suk
+      - FTP_DIR=/2026
+      - ROUTER_AET=DCMROUTER
+      - ROUTER_HOST=dicom-router
+      - ROUTER_PORT=11112
+      - MAX_RETRIES=3
+      - SCAN_INTERVAL=120000
+    depends_on:
+      - dicom-router
+    networks:
+      - dicom-net
+
+networks:
+  dicom-net:
+    driver: bridge
