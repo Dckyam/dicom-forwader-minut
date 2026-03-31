@@ -197,9 +197,16 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Waktu</th><th>Path File</th></tr></thead>
-            <tbody id="stateTable"><tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr></tbody>
+            <thead><tr><th class="cb-col"><input type="checkbox" id="stateSelectAll" onchange="toggleStateAll(this)" /></th><th>Waktu</th><th>Path File</th></tr></thead>
+            <tbody id="stateTable"><tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr></tbody>
           </table>
+        </div>
+        <div style="padding:10px 12px;border-top:1px solid #2d3748;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span id="stateSelectedCount" style="font-size:.75rem;color:#94a3b8"></span>
+          <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-danger" onclick="deleteStateFromTab()">🗑️ Hapus State Terpilih</button>
+            <button class="btn btn-outline" onclick="deleteAllStateVisible()" style="border-color:#f87171;color:#f87171">🗑️ Hapus Semua Ditampilkan</button>
+          </div>
         </div>
       </div>
 
@@ -282,8 +289,6 @@
             <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-success" onclick="sendSelected()" id="btnSend">✅ Kirim Terpilih</button>
               <button class="btn btn-outline" onclick="selectUnsent()">Pilih Belum Terkirim</button>
-              <button class="btn btn-danger" onclick="deleteStateSelected()" id="btnDeleteState">🗑️ Hapus State Terpilih</button>
-              <button class="btn btn-outline" onclick="deleteAllStatePage()" style="border-color:#f87171;color:#f87171">🗑️ Hapus Semua Terkirim</button>
             </div>
           </div>
         </div>
@@ -400,14 +405,64 @@
     const q = (document.getElementById('stateSearch').value || '').toLowerCase();
     const data = q ? allState.filter(s => s.path.toLowerCase().includes(q)) : allState;
     const tbody = document.getElementById('stateTable');
+    document.getElementById('stateSelectAll').checked = false;
+    document.getElementById('stateSelectedCount').textContent = '';
     document.getElementById('stateCount').textContent = q ? `${data.length} dari ${allState.length}` : `${allState.length} total`;
     if (data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">${q ? 'Tidak ada hasil untuk "' + esc(q) + '"' : 'Belum ada data terkirim'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">${q ? 'Tidak ada hasil untuk "' + esc(q) + '"' : 'Belum ada data terkirim'}</td></tr>`;
       return;
     }
     tbody.innerHTML = data.map(s =>
-      `<tr><td style="white-space:nowrap;color:#94a3b8;font-size:.72rem">${fmtTime(s.ts)}</td><td class="path-cell">${esc(s.path)}</td></tr>`
+      `<tr>
+        <td class="cb-col"><input type="checkbox" class="state-cb" data-path="${esc(s.path)}" onchange="updateStateSelectedCount()" /></td>
+        <td style="white-space:nowrap;color:#94a3b8;font-size:.72rem">${fmtTime(s.ts)}</td>
+        <td class="path-cell">${esc(s.path)}</td>
+      </tr>`
     ).join('');
+  }
+
+  function toggleStateAll(master) {
+    document.querySelectorAll('.state-cb').forEach(cb => cb.checked = master.checked);
+    updateStateSelectedCount();
+  }
+
+  function updateStateSelectedCount() {
+    const n = document.querySelectorAll('.state-cb:checked').length;
+    const total = document.querySelectorAll('.state-cb').length;
+    document.getElementById('stateSelectedCount').textContent = n > 0 ? `${n} dipilih` : '';
+    document.getElementById('stateSelectAll').checked = total > 0 && n === total;
+  }
+
+  async function deleteStateFromTab() {
+    const checked = [...document.querySelectorAll('.state-cb:checked')];
+    if (checked.length === 0) { showToast('Pilih minimal satu file.'); return; }
+    if (!confirm(`Hapus state ${checked.length} file? File-file ini akan bisa dikirim ulang.`)) return;
+    const paths = checked.map(cb => cb.dataset.path);
+    try {
+      const r = await fetch('/api/delete-state', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths })
+      });
+      const d = await r.json();
+      showToast(d.message || d.error);
+      await loadStatus();
+    } catch (e) { showToast('Error: ' + e.message); }
+  }
+
+  async function deleteAllStateVisible() {
+    const cbs = [...document.querySelectorAll('.state-cb')];
+    if (cbs.length === 0) { showToast('Tidak ada state yang ditampilkan.'); return; }
+    if (!confirm(`Hapus semua ${cbs.length} state yang ditampilkan? File-file ini akan bisa dikirim ulang.`)) return;
+    const paths = cbs.map(cb => cb.dataset.path);
+    try {
+      const r = await fetch('/api/delete-state', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths })
+      });
+      const d = await r.json();
+      showToast(d.message || d.error);
+      await loadStatus();
+    } catch (e) { showToast('Error: ' + e.message); }
   }
 
   // ─── Load responses ─────────────────────────────────────
