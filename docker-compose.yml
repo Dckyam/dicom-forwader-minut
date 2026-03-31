@@ -9,9 +9,9 @@ services:
       - "11113:11112"
       - "8081:8080"
     environment:
-      - ORG_ID=100027444
-      - CLIENT=tQzkZ68MPzmbPUhkRGL2WcRRVA5n9kF2VCX2B27ZCfwD6pcq
-      - SECRET=GMPb54nFM0Y8nGySY4vJCAm2x3Rw8WBlXCU4rGZJt7uHFb2SNjj6rahYPfNxkcRf
+      - ORG_ID=100027411
+      - CLIENT=A9rCi3e2tr3RDuULjbjUI3IthglbeLV67I9ZGIxZsBdBK8cH
+      - SECRET=8k77IYkCcWHAMoAUoPlpRSaJ2aC1EV1WxG9orMG8ZcBY6XjAgHhI6Pp190IGfm1L
       - URL=https://api-satusehat.kemkes.go.id
       - AE_TITLE=DCMROUTER
     volumes:
@@ -27,7 +27,7 @@ services:
     volumes:
       - "./state:/state"
     environment:
-      - FTP_HOST=10.100.1.22
+      - FTP_HOST=10.5.1.22
       - FTP_PORT=2121
       - FTP_USER=admin
       - FTP_PASS=J4nganM4suk
