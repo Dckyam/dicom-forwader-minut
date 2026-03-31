@@ -9,6 +9,7 @@ services:
       - "11115:11112"
       - "18083:8080"
     environment:
+      - PYTHONUNBUFFERED=1
       - ORG_ID=100027411
       - CLIENT=A9rCi3e2tr3RDuULjbjUI3IthglbeLV67I9ZGIxZsBdBK8cH
       - SECRET=8k77IYkCcWHAMoAUoPlpRSaJ2aC1EV1WxG9orMG8ZcBY6XjAgHhI6Pp190IGfm1L
