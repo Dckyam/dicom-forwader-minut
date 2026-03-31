@@ -154,21 +154,27 @@
   <!-- Stats Row -->
   <div class="grid grid-4" style="margin-bottom:16px">
     <div class="card stat-card">
-      <div class="stat-num" id="statTotal">—</div>
-      <div class="stat-label">Total Terkirim</div>
+      <div class="stat-num" id="statTotal" style="color:#60a5fa">—</div>
+      <div class="stat-label">Total Dikirim ke Router</div>
+      <div style="font-size:.68rem;color:#475569;margin-top:4px">storescu OK (.sent files)</div>
     </div>
     <div class="card stat-card">
-      <div class="stat-num" id="statOk" style="color:#4ade80">—</div>
-      <div class="stat-label">Berhasil (session)</div>
+      <div class="stat-num" id="statSatusehatOK" style="color:#4ade80">—</div>
+      <div class="stat-label">Berhasil ke SatuSehat</div>
+      <div style="font-size:.68rem;color:#475569;margin-top:4px">ImagingStudy POST-ed</div>
     </div>
     <div class="card stat-card">
-      <div class="stat-num" id="statFail" style="color:#f87171">—</div>
-      <div class="stat-label">Gagal (session)</div>
+      <div class="stat-num" id="statSatusehatFail" style="color:#f87171">—</div>
+      <div class="stat-label">Gagal di SatuSehat</div>
+      <div style="font-size:.68rem;color:#475569;margin-top:4px">Could not process association</div>
     </div>
     <div class="card stat-card">
       <div class="stat-num" id="statLast" style="font-size:1rem;color:#a78bfa">—</div>
       <div class="stat-label">Scan Terakhir</div>
     </div>
+  </div>
+  <div id="routerLogWarning" style="display:none;background:#1a1200;border:1px solid #854d0e;color:#fbbf24;padding:8px 14px;border-radius:6px;font-size:.75rem;margin-bottom:12px">
+    ⚠️ Log dicom-router tidak tersedia — mount volume <code>./logs:/router-logs:ro</code> di docker-compose diperlukan untuk stats SatuSehat.
   </div>
 
   <div class="grid grid-2">
@@ -332,8 +338,20 @@
         badge.className = 'badge idle'; dot.className = 'dot idle'; lbl.textContent = 'Idle';
       }
 
-      document.getElementById('statTotal').textContent = d.totalSent;
+      document.getElementById('statTotal').textContent = d.totalSentToRouter;
       document.getElementById('statLast').textContent  = timeSince(d.lastScanTime);
+
+      // SatuSehat stats from router logs
+      const rs = d.routerStats || {};
+      if (rs.available === false) {
+        document.getElementById('routerLogWarning').style.display = 'block';
+        document.getElementById('statSatusehatOK').textContent   = '—';
+        document.getElementById('statSatusehatFail').textContent = '—';
+      } else {
+        document.getElementById('routerLogWarning').style.display = 'none';
+        document.getElementById('statSatusehatOK').textContent   = rs.satusehatOK   ?? '—';
+        document.getElementById('statSatusehatFail').textContent = rs.satusehatFail ?? '—';
+      }
 
       // State table
       const tbody = document.getElementById('stateTable');
@@ -363,11 +381,6 @@
   async function loadResponses() {
     try {
       allResponses = await apiFetch('/api/responses?limit=500');
-      // Stats
-      const ok   = allResponses.filter(r => r.status === 'OK').length;
-      const fail = allResponses.filter(r => r.status === 'FAIL').length;
-      document.getElementById('statOk').textContent   = ok;
-      document.getElementById('statFail').textContent = fail;
       renderResponses();
     } catch (e) { console.error('responses error', e); }
   }

@@ -239,6 +239,31 @@ function tailLog(lines) {
 }
 
 // ─────────────────────────────────────────────
+//  ROUTER LOG PARSER (SatuSehat stats)
+// ─────────────────────────────────────────────
+const ROUTER_LOGS_DIR = '/router-logs';
+
+function parseRouterStats() {
+  let satusehatOK = 0, satusehatFail = 0;
+  try {
+    if (!fs.existsSync(ROUTER_LOGS_DIR)) return { satusehatOK, satusehatFail, available: false };
+    const files = fs.readdirSync(ROUTER_LOGS_DIR).filter(f => !fs.statSync(path.join(ROUTER_LOGS_DIR, f)).isDirectory());
+    for (const f of files) {
+      try {
+        const content = fs.readFileSync(path.join(ROUTER_LOGS_DIR, f), 'utf8');
+        for (const line of content.split('\n')) {
+          if (line.includes('ImagingStudy POST-ed')) satusehatOK++;
+          if (line.includes('Could not process association')) satusehatFail++;
+        }
+      } catch (_) {}
+    }
+    return { satusehatOK, satusehatFail, available: true };
+  } catch (_) {
+    return { satusehatOK, satusehatFail, available: false };
+  }
+}
+
+// ─────────────────────────────────────────────
 //  HTTP / REST API
 // ─────────────────────────────────────────────
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -284,7 +309,8 @@ const server = http.createServer(async (req, res) => {
       scanning,
       lastScanTime: lastScanTime ? lastScanTime.toISOString() : null,
       scheduledScans: nextScheduledScans.map(s => s.time.toISOString()),
-      totalSent: sent.length,
+      totalSentToRouter: sent.length,
+      routerStats: parseRouterStats(),
       recentSent: sent.slice(0, 50)
     });
     return;

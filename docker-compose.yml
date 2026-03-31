@@ -28,6 +28,7 @@ services:
       - "13003:3000"
     volumes:
       - "./state:/state"
+      - "./logs:/router-logs:ro"
     environment:
       - FTP_HOST=10.5.1.22
       - FTP_PORT=2121
