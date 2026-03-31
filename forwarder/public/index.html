@@ -255,6 +255,9 @@
               <span id="fileCount">0 file ditemukan</span>
               <span id="unsentCount"></span>
             </div>
+            <div style="margin:8px 0">
+              <input type="text" id="fileSearch" placeholder="🔍 Cari path..." oninput="renderFileTable()" style="width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:.82rem;box-sizing:border-box" />
+            </div>
             <div class="select-all-row">
               <input type="checkbox" id="selectAll" onchange="toggleAll(this)" />
               <label for="selectAll" style="cursor:pointer">Pilih Semua yang Belum Terkirim</label>
@@ -444,6 +447,7 @@
     try {
       const d = await apiFetch(`/api/files?date=${date}`);
       allFiles = d.files || [];
+      const fs = document.getElementById('fileSearch'); if (fs) fs.value = '';
       renderFileTable();
       document.getElementById('fileListSection').style.display = 'block';
       document.getElementById('fileCount').textContent = `${allFiles.length} file ditemukan`;
@@ -457,13 +461,15 @@
 
   function renderFileTable() {
     const tbody = document.getElementById('fileTable');
-    if (allFiles.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">Tidak ada file di tanggal ini</td></tr>';
+    const q = (document.getElementById('fileSearch')?.value || '').toLowerCase();
+    const filtered = q ? allFiles.map((f, i) => ({...f, _i: i})).filter(f => f.path.toLowerCase().includes(q)) : allFiles.map((f, i) => ({...f, _i: i}));
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">' + (q ? 'Tidak ada hasil untuk pencarian ini' : 'Tidak ada file di tanggal ini') + '</td></tr>';
       return;
     }
-    tbody.innerHTML = allFiles.map((f, i) =>
+    tbody.innerHTML = filtered.map((f) =>
       `<tr>
-        <td class="cb-col"><input type="checkbox" class="file-cb" data-i="${i}" onchange="updateSelectedCount()" ${f.sent ? '' : ''} /></td>
+        <td class="cb-col"><input type="checkbox" class="file-cb" data-i="${f._i}" onchange="updateSelectedCount()" /></td>
         <td class="path-cell">${esc(f.path)}</td>
         <td>${f.sent ? '<span class="status-skip">Terkirim</span>' : '<span style="color:#fbbf24">Belum</span>'}</td>
       </tr>`
