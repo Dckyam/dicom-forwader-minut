@@ -3,11 +3,11 @@ version: '3.8'
 services:
   dicom-router:
     image: registry.dto.kemkes.go.id/pub/dicom-router:latest
-    container_name: dicom-router
+    container_name: dicom-router-minut
     restart: always
     ports:
-      - "11113:11112"
-      - "8081:8080"
+      - "11115:11112"
+      - "8083:8080"
     environment:
       - ORG_ID=100027411
       - CLIENT=A9rCi3e2tr3RDuULjbjUI3IthglbeLV67I9ZGIxZsBdBK8cH
@@ -18,11 +18,11 @@ services:
       - "./out:/app/out"
       - "./logs:/app/logs"
     networks:
-      - dicom-net
+      - dicom-net-minut
 
   dicom-forwarder:
     build: ./forwarder
-    container_name: dicom-forwarder
+    container_name: dicom-forwarder-minut
     restart: unless-stopped
     volumes:
       - "./state:/state"
@@ -40,8 +40,8 @@ services:
     depends_on:
       - dicom-router
     networks:
-      - dicom-net
+      - dicom-net-minut
 
 networks:
-  dicom-net:
+  dicom-net-minut:
     driver: bridge
