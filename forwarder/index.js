@@ -83,7 +83,7 @@ async function listFtpRecursive(client, dir, results = []) {
 
 // ---------- DATE PATHS ----------
 // Scan hari ini, kemarin, 2 hari lalu
-function getRecentDatePaths(baseDir) {
+function getRecentDatePaths() {
   const paths = [];
   const now = new Date();
   for (let d = 0; d <= 2; d++) {
@@ -92,7 +92,7 @@ function getRecentDatePaths(baseDir) {
     const y = dt.getFullYear();
     const m = dt.getMonth() + 1;
     const day = dt.getDate();
-    paths.push(`${baseDir}/${y}/${m}/${day}`);
+    paths.push(`/${y}/${m}/${day}`);
   }
   return paths;
 }
@@ -173,38 +173,34 @@ async function runScanPaths(scanPaths, label) {
 
 async function scan(fullScan = false) {
   if (fullScan) {
-    log(`🔍 INITIAL FULL SCAN — ${FTP_HOST}:${FTP_PORT}${FTP_DIR} (semua data, per-bulan)`);
-    // List tahun dulu, lalu scan per bulan agar ada progress & tidak timeout
-    const yearClient = new ftp.Client(30000);
-    yearClient.ftp.verbose = false;
-    let months = [];
-    try {
-      await yearClient.access({ host: FTP_HOST, port: FTP_PORT, user: FTP_USER, password: FTP_PASS, secure: false });
-      const years = await yearClient.list(FTP_DIR);
-      for (const yr of years.filter(i => i.type === 2)) {
-        const yrPath = `${FTP_DIR}/${yr.name}`;
-        const mList = await yearClient.list(yrPath);
-        for (const mo of mList.filter(i => i.type === 2)) {
-          months.push(`${yrPath}/${mo.name}`);
-        }
+    // Initial scan: mulai dari Oktober 2025 sampai bulan ini
+    const START_YEAR  = 2025;
+    const START_MONTH = 10; // Oktober
+    const now = new Date();
+
+    // Buat daftar semua bulan dari Okt 2025 s/d bulan ini
+    const months = [];
+    for (let y = START_YEAR; y <= now.getFullYear(); y++) {
+      const startM = (y === START_YEAR) ? START_MONTH : 1;
+      const endM   = (y === now.getFullYear()) ? now.getMonth() + 1 : 12;
+      for (let m = startM; m <= endM; m++) {
+        months.push(`/${y}/${m}`);
       }
-    } catch (err) {
-      log('❌ Error listing years/months:', err.message);
-    } finally {
-      yearClient.close();
     }
 
-    log(`📅 Found ${months.length} month(s) to scan`);
+    log(`🔍 INITIAL SCAN — mulai Oktober 2025 s/d sekarang (${months.length} bulan)`);
+    log(`📅 Bulan: ${months.join(', ')}`);
+
     let grandTotal = 0;
     for (const monthPath of months) {
       const n = await runScanPaths([monthPath], monthPath);
       grandTotal += n;
     }
-    log(`✅ INITIAL FULL SCAN completed. Grand total files: ${grandTotal}`);
+    log(`✅ INITIAL SCAN completed. Grand total files: ${grandTotal}`);
     fs.writeFileSync(INITIAL_SCAN_MARKER, new Date().toISOString());
-    log('📌 Initial full scan marked as done.');
+    log('📌 Initial scan marked as done.');
   } else {
-    const datePaths = getRecentDatePaths(FTP_DIR);
+    const datePaths = getRecentDatePaths();
     log(`🔍 Periodic scan — ${datePaths.join(', ')}`);
     const total = await runScanPaths(datePaths, 'periodic');
     log(`✅ Periodic scan completed. Files: ${total}`);
