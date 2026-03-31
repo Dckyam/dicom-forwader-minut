@@ -140,7 +140,7 @@
 
 <header>
   <div>
-    <h1>🏥 DICOM Forwarder Dashboard</h1>
+    <h1>DICOM Forwarder Dashboard</h1>
     <div class="subtitle">SatuSehat Integration Monitor</div>
   </div>
   <div id="scanBadge" class="badge idle"><span class="dot idle" id="scanDot"></span><span id="scanLabel">Idle</span></div>
@@ -204,8 +204,8 @@
         <div style="padding:10px 12px;border-top:1px solid #2d3748;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span id="stateSelectedCount" style="font-size:.75rem;color:#94a3b8"></span>
           <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-danger" onclick="deleteStateFromTab()">🗑️ Hapus State Terpilih</button>
-            <button class="btn btn-outline" onclick="deleteAllStateVisible()" style="border-color:#f87171;color:#f87171">🗑️ Hapus Semua Ditampilkan</button>
+            <button class="btn btn-outline" onclick="deleteStateFromTab()" style="border-color:#f87171;color:#f87171;padding:5px 12px;font-size:.78rem">Hapus State Terpilih</button>
+            <button class="btn btn-outline" onclick="deleteAllStateVisible()" style="border-color:#94a3b8;color:#94a3b8;padding:5px 12px;font-size:.78rem">Hapus Semua Ditampilkan</button>
           </div>
         </div>
       </div>
@@ -255,7 +255,7 @@
       <!-- Send Panel -->
       <div class="card">
         <div class="card-header">
-          📤 Kirim Manual
+          Kirim Manual
           <span id="sendStatus" style="font-size:.72rem;color:#fbbf24"></span>
         </div>
         <div class="card-body send-panel">
@@ -296,7 +296,7 @@
 
       <!-- Schedule Info -->
       <div class="card">
-        <div class="card-header">⏰ Jadwal Otomatis</div>
+        <div class="card-header">Jadwal Otomatis</div>
         <div class="card-body">
           <div class="schedule-list" id="scheduleList">
             <div style="color:#64748b;font-size:.78rem">Memuat jadwal...</div>
