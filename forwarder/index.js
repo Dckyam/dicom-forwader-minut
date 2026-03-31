@@ -407,5 +407,4 @@ server.listen(UI_PORT, () => {
 log(`🚀 DICOM FTP Forwarder starting — ${FTP_HOST}:${FTP_PORT} -> ${ROUTER_AET}@${ROUTER_HOST}:${ROUTER_PORT}`);
 log('⏰ Scheduled scans: 06:00, 12:00, 18:00, 00:00');
 
-runScan([todayPath()], 'startup');
 scheduleNext();
