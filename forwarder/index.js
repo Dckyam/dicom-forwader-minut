@@ -311,7 +311,7 @@ async function getRouterStats() {
   let epochOK = 0, epochFail = 0;
   for (const line of content.split('\n')) {
     if (line.includes('ImagingStudy POST-ed')) epochOK++;
-    if (line.includes('Could not process association')) epochFail++;
+    if (line.includes('Failed to obtain Patient ID and ServiceRequest ID') || line.includes('Could not process association')) epochFail++;
   }
   const persisted = loadPersistedStats();
   if (startedAt && startedAt !== persisted.startedAt) {
@@ -337,7 +337,7 @@ function parseRouterStats() {
         const content = fs.readFileSync(path.join(ROUTER_LOGS_DIR, f), 'utf8');
         for (const line of content.split('\n')) {
           if (line.includes('ImagingStudy POST-ed')) satusehatOK++;
-          if (line.includes('Could not process association')) satusehatFail++;
+          if (line.includes('Failed to obtain Patient ID and ServiceRequest ID') || line.includes('Could not process association')) satusehatFail++;
         }
       } catch (_) {}
     }
