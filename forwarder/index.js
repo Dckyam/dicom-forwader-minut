@@ -112,15 +112,25 @@ async function processFile(client, ftpPath) {
   if (alreadySent(ftpPath)) { log('⏩ SKIP already sent', ftpPath); return; }
 
   const tmpFile = path.join(os.tmpdir(), `dcm_${crypto.randomBytes(6).toString('hex')}`);
-  try {
-    await client.downloadTo(tmpFile, ftpPath);
-    log('⬇️  Downloaded', ftpPath);
-  } catch (err) {
-    log('FTP download error:', ftpPath, ':', err.message);
-    if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
-    logResponse(ftpPath, 'FAIL', 'Download error: ' + err.message);
-    return;
+  let downloaded = false;
+  for (let dlAttempt = 1; dlAttempt <= 3; dlAttempt++) {
+    try {
+      await client.downloadTo(tmpFile, ftpPath);
+      log('⬇️  Downloaded', ftpPath);
+      downloaded = true;
+      break;
+    } catch (err) {
+      log(`FTP download error (${dlAttempt}/3):`, ftpPath, ':', err.message);
+      if (fs.existsSync(tmpFile)) { try { fs.unlinkSync(tmpFile); } catch (_) {} }
+      if (dlAttempt < 3) {
+        await new Promise(r => setTimeout(r, dlAttempt * 3000));
+      } else {
+        logResponse(ftpPath, 'FAIL', 'Download error: ' + err.message);
+        return;
+      }
+    }
   }
+  if (!downloaded) return;
 
   let attempt = 0;
   while (attempt < MAX_RETRIES) {
