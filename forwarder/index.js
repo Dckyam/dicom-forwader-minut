@@ -178,6 +178,11 @@ function dayBeforePath() {
   return `/${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+function todayHourPath(hour) {
+  const now = new Date();
+  return `/${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}/${hour}`;
+}
+
 function datePath(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   return `/${y}/${m}/${d}`;
@@ -219,9 +224,9 @@ async function runScan(scanPaths, label) {
 }
 
 // ─────────────────────────────────────────────
-//  SCHEDULER  — setiap hari jam 01:00 WITA (kirim H-2 + H-1)
+//  SCHEDULER  — setiap hari jam 03:00 WITA (kirim H-1 = 02:00-01:59)
 // ─────────────────────────────────────────────
-const SCHEDULE_HOUR = 1;
+const SCHEDULE_HOUR = 3;
 
 function getNextScheduledTime() {
   const now = new Date();
@@ -235,10 +240,10 @@ function scheduleNext() {
   const time = getNextScheduledTime();
   nextScheduledScans = [{ hour: SCHEDULE_HOUR, time }];
   const delay = time - Date.now();
-  log(`⏰ Next scan: ${time.toLocaleString('id-ID')} (jam 01:00 WITA — H-2 + H-1)`);
+  log(`⏰ Next scan: ${time.toLocaleString('id-ID')} (jam 03:00 WITA — H-1 kirim 02:00-01:59)`);
   setTimeout(async () => {
-    await runScan([dayBeforePath()], 'scheduled-01:00-H-2');
-    await runScan([yesterdayPath()], 'scheduled-01:00-H-1');
+    // Kirim H-1: kemarin full (02:00-23:59) + hari ini jam 00 & 01 (00:00-01:59)
+    await runScan([yesterdayPath(), todayHourPath(0), todayHourPath(1)], 'scheduled-03:00-H-1');
     scheduleNext();
   }, delay);
 }
