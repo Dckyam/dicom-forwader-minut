@@ -171,15 +171,22 @@ async function runScan(scanPaths, label) {
   lastScanTime = new Date();
   log(`🔍 Scan [${label}] — paths: ${scanPaths.join(', ')}`);
   try {
-    const client = await ftpConnect();
+    let client = await ftpConnect();
     try {
       for (const p of scanPaths) {
         const files = await listFtpRecursive(client, p);
         log(`   ${p} => ${files.length} file(s)`);
-        for (const f of files) await processFile(client, f);
+        for (const f of files) {
+          if (client.closed) {
+            log('FTP connection lost, reconnecting...');
+            try { client.close(); } catch (_) {}
+            client = await ftpConnect();
+          }
+          await processFile(client, f);
+        }
       }
     } finally {
-      client.close();
+      try { client.close(); } catch (_) {}
     }
     log(`✅ Scan [${label}] completed.`);
   } catch (err) {
