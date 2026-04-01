@@ -186,6 +186,8 @@
         <button class="tab-btn" onclick="switchTab('responses',this)">Response Router</button>
         <button class="tab-btn" onclick="switchTab('log',this)">Log</button>
         <button class="tab-btn" onclick="switchTab('router-log',this)">Responses SatuSehat</button>
+        <button class="tab-btn" onclick="switchTab('acc-berhasil',this)">Acc Berhasil</button>
+        <button class="tab-btn" onclick="switchTab('acc-gagal',this)">Acc Gagal</button>
       </div>
 
       <!-- State tab -->
@@ -246,6 +248,38 @@
           <button class="btn btn-outline" onclick="loadRouterLog()">↻ Refresh</button>
         </div>
         <div class="log-area" id="routerLogArea" style="color:#fbbf24">Klik Refresh untuk memuat log router...</div>
+      </div>
+
+      <!-- Acc Berhasil tab -->
+      <div id="tab-acc-berhasil" class="tab-pane card-body" style="padding:0">
+        <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748;flex-wrap:wrap">
+          <input id="accBerhasilSearch" type="text" placeholder="🔍 Cari accession/id..." oninput="renderAccBerhasil()"
+            style="flex:1;min-width:160px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:5px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
+          <span id="accBerhasilCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
+          <button class="btn btn-outline" onclick="loadAccessionSummary()" style="padding:4px 10px;font-size:.75rem">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>No</th><th>Accession Number</th><th>ImagingStudy ID</th><th>Study IUID</th></tr></thead>
+            <tbody id="accBerhasilTable"><tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Klik tab untuk memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Acc Gagal tab -->
+      <div id="tab-acc-gagal" class="tab-pane card-body" style="padding:0">
+        <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748;flex-wrap:wrap">
+          <input id="accGagalSearch" type="text" placeholder="🔍 Cari accession..." oninput="renderAccGagal()"
+            style="flex:1;min-width:160px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:5px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
+          <span id="accGagalCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
+          <button class="btn btn-outline" onclick="loadAccessionSummary()" style="padding:4px 10px;font-size:.75rem">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>No</th><th>Accession Number</th><th>Gagal (×)</th><th>Study IUID</th></tr></thead>
+            <tbody id="accGagalTable"><tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Klik tab untuk memuat data...</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -317,6 +351,8 @@
   // ─── State ─────────────────────────────────────────────
   let allResponses = [];
   let allState = [];
+  let allAccBerhasil = [];
+  let allAccGagal = [];
   let allFiles = [];
   let countdown = 10;
   let countdownTimer;
@@ -330,6 +366,7 @@
     if (name === 'state') loadStateTable();
     if (name === 'log') loadLog();
     if (name === 'router-log') loadRouterLog();
+    if (name === 'acc-berhasil' || name === 'acc-gagal') loadAccessionSummary();
   }
 
   // ─── Fetch helpers ──────────────────────────────────────
@@ -527,6 +564,58 @@
       el.textContent = d.content || '(Log kosong)';
       el.scrollTop = el.scrollHeight;
     } catch (e) { el.textContent = 'Gagal memuat log router: ' + e.message; }
+  }
+
+  // ─── Accession summary ───────────────────────────────────
+  async function loadAccessionSummary() {
+    document.getElementById('accBerhasilTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr>';
+    document.getElementById('accGagalTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr>';
+    try {
+      const d = await apiFetch('/api/accession-summary');
+      allAccBerhasil = d.succeeded || [];
+      allAccGagal = d.failed || [];
+      renderAccBerhasil();
+      renderAccGagal();
+    } catch (e) {
+      document.getElementById('accBerhasilTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:20px">Gagal memuat data.</td></tr>';
+      document.getElementById('accGagalTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:20px">Gagal memuat data.</td></tr>';
+    }
+  }
+
+  function renderAccBerhasil() {
+    const q = (document.getElementById('accBerhasilSearch')?.value || '').toLowerCase();
+    const filtered = q ? allAccBerhasil.filter(a => a.accession.toLowerCase().includes(q) || (a.imagingStudyId || '').toLowerCase().includes(q)) : allAccBerhasil;
+    document.getElementById('accBerhasilCount').textContent = `${filtered.length} / ${allAccBerhasil.length}`;
+    if (filtered.length === 0) {
+      document.getElementById('accBerhasilTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">' + (q ? 'Tidak ada hasil' : 'Belum ada accession berhasil') + '</td></tr>';
+      return;
+    }
+    document.getElementById('accBerhasilTable').innerHTML = filtered.map((a, i) =>
+      `<tr>
+        <td style="color:#64748b;text-align:center">${i+1}</td>
+        <td><span style="font-family:monospace;font-size:.82rem;color:#4ade80;font-weight:600">${esc(a.accession)}</span></td>
+        <td style="font-family:monospace;font-size:.72rem;color:#93c5fd">${esc(a.imagingStudyId || '—')}</td>
+        <td class="path-cell" style="font-size:.68rem;color:#64748b">${esc(a.iuid || '—')}</td>
+      </tr>`
+    ).join('');
+  }
+
+  function renderAccGagal() {
+    const q = (document.getElementById('accGagalSearch')?.value || '').toLowerCase();
+    const filtered = q ? allAccGagal.filter(a => a.accession.toLowerCase().includes(q)) : allAccGagal;
+    document.getElementById('accGagalCount').textContent = `${filtered.length} / ${allAccGagal.length}`;
+    if (filtered.length === 0) {
+      document.getElementById('accGagalTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">' + (q ? 'Tidak ada hasil' : 'Belum ada accession gagal') + '</td></tr>';
+      return;
+    }
+    document.getElementById('accGagalTable').innerHTML = filtered.map((a, i) =>
+      `<tr>
+        <td style="color:#64748b;text-align:center">${i+1}</td>
+        <td><span style="font-family:monospace;font-size:.82rem;color:#f87171;font-weight:600">${esc(a.accession)}</span></td>
+        <td style="text-align:center"><span class="badge" style="background:#3b1010;color:#f87171;padding:2px 8px">${a.count}×</span></td>
+        <td class="path-cell" style="font-size:.68rem;color:#64748b">${esc(a.iuid || '—')}</td>
+      </tr>`
+    ).join('');
   }
 
   // ─── Delete state ─────────────────────────────────────────

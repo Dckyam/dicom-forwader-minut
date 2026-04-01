@@ -354,6 +354,38 @@ function parseRouterStats() {
   }
 }
 
+async function getAccessionSummary() {
+  const content = await getDockerLogs('all');
+  if (!content) return { failed: [], succeeded: [] };
+  const failedMap = new Map();
+  const succeededMap = new Map();
+  let lastAcc = null;
+  let lastIuid = null;
+  for (const line of content.split('\n')) {
+    const accM = line.match(/Accession Number:\s*(\S+)/);
+    if (accM) { lastAcc = accM[1]; lastIuid = null; continue; }
+    const iuidM = line.match(/Study IUID:\s*(\S+)/);
+    if (iuidM) { lastIuid = iuidM[1]; continue; }
+    if (line.includes('Failed to obtain Patient ID and ServiceRequest ID')) {
+      if (lastAcc) {
+        const prev = failedMap.get(lastAcc) || { accession: lastAcc, iuid: lastIuid, count: 0 };
+        failedMap.set(lastAcc, { ...prev, count: prev.count + 1, iuid: lastIuid || prev.iuid });
+        lastAcc = null; lastIuid = null;
+      }
+      continue;
+    }
+    const postM = line.match(/ImagingStudy POST-ed, id:\s*(\S+)/);
+    if (postM) {
+      if (lastAcc) {
+        succeededMap.set(lastAcc, { accession: lastAcc, iuid: lastIuid, imagingStudyId: postM[1] });
+        lastAcc = null; lastIuid = null;
+      }
+      continue;
+    }
+  }
+  return { failed: [...failedMap.values()], succeeded: [...succeededMap.values()] };
+}
+
 // ─────────────────────────────────────────────
 //  HTTP / REST API
 // ─────────────────────────────────────────────
@@ -519,6 +551,16 @@ const server = http.createServer(async (req, res) => {
       }
     } catch (err) {
       jsonResponse(res, 200, { available: false, content: '' });
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/accession-summary') {
+    try {
+      const data = await getAccessionSummary();
+      jsonResponse(res, 200, data);
+    } catch (err) {
+      jsonResponse(res, 200, { failed: [], succeeded: [] });
     }
     return;
   }
