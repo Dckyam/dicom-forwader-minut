@@ -394,9 +394,13 @@ const server = http.createServer(async (req, res) => {
       lastScanTime: lastScanTime ? lastScanTime.toISOString() : null,
       scheduledScans: nextScheduledScans.map(s => s.time.toISOString()),
       totalSentToRouter: sent.length,
-      routerStats: await getRouterStats(),
-      recentSent: sent.slice(0, 50)
+      routerStats: await getRouterStats()
     });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/state') {
+    jsonResponse(res, 200, readStateFiles());
     return;
   }
 

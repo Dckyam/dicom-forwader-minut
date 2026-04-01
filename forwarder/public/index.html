@@ -327,6 +327,7 @@
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
+    if (name === 'state') loadStateTable();
     if (name === 'log') loadLog();
     if (name === 'router-log') loadRouterLog();
   }
@@ -353,7 +354,16 @@
     return Math.floor(secs/86400) + 'h lalu';
   }
 
-  // ─── Load status ────────────────────────────────────────
+  // ─── Load state table ─────────────────────────────────────────────────
+  async function loadStateTable() {
+    try {
+      document.getElementById('stateTable').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr>';
+      allState = await apiFetch('/api/state');
+      renderStateTable();
+    } catch (e) { document.getElementById('stateTable').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#f87171;padding:20px">Gagal memuat state.</td></tr>'; }
+  }
+
+  // ─── Load status ────────────────────────────────────────────────────────
   async function loadStatus() {
     try {
       const d = await apiFetch('/api/status');
@@ -383,9 +393,7 @@
         document.getElementById('statSatusehatFail').textContent = rs.satusehatFail ?? '—';
       }
 
-      // State table
-      allState = d.recentSent || [];
-      renderStateTable();
+      // State table loaded separately via loadStateTable()
 
       // Schedule
       const sl = document.getElementById('scheduleList');
@@ -445,7 +453,7 @@
       });
       const d = await r.json();
       showToast(d.message || d.error);
-      await loadStatus();
+      await loadStateTable();
     } catch (e) { showToast('Error: ' + e.message); }
   }
 
@@ -461,7 +469,7 @@
       });
       const d = await r.json();
       showToast(d.message || d.error);
-      await loadStatus();
+      await loadStateTable();
     } catch (e) { showToast('Error: ' + e.message); }
   }
 
@@ -677,6 +685,7 @@
   // Initial load
   loadStatus();
   loadResponses();
+  loadStateTable();
   startCountdown();
 </script>
 </body>
