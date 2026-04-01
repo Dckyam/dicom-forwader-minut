@@ -271,19 +271,58 @@ function getDockerLogs(lines) {
   });
 }
 
+const ROUTER_STATS_PERSIST_FILE = path.join(STATE_DIR, 'router-stats.json');
+
+function loadPersistedStats() {
+  try { return JSON.parse(fs.readFileSync(ROUTER_STATS_PERSIST_FILE, 'utf8')); }
+  catch (_) { return { startedAt: null, epochOK: 0, epochFail: 0, totalOK: 0, totalFail: 0 }; }
+}
+
+function savePersistedStats(data) {
+  try { fs.writeFileSync(ROUTER_STATS_PERSIST_FILE, JSON.stringify(data)); } catch (_) {}
+}
+
+function getContainerStartTime() {
+  return new Promise((resolve) => {
+    const req = http.request({
+      socketPath: '/var/run/docker.sock',
+      path: `/v1.41/containers/${ROUTER_CONTAINER_NAME}/json`,
+      method: 'GET'
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString()).State?.StartedAt || null); }
+        catch (_) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.end();
+  });
+}
+
 let routerStatsCache = { satusehatOK: 0, satusehatFail: 0, available: false };
 let routerStatsCacheTime = 0;
 
 async function getRouterStats() {
   if (Date.now() - routerStatsCacheTime < 30000) return routerStatsCache;
-  const content = await getDockerLogs(10000);
+  const [content, startedAt] = await Promise.all([getDockerLogs('all'), getContainerStartTime()]);
   if (!content) return routerStatsCache;
-  let satusehatOK = 0, satusehatFail = 0;
+  let epochOK = 0, epochFail = 0;
   for (const line of content.split('\n')) {
-    if (line.includes('ImagingStudy POST-ed')) satusehatOK++;
-    if (line.includes('Could not process association')) satusehatFail++;
+    if (line.includes('ImagingStudy POST-ed')) epochOK++;
+    if (line.includes('Could not process association')) epochFail++;
   }
-  routerStatsCache = { satusehatOK, satusehatFail, available: true };
+  const persisted = loadPersistedStats();
+  if (startedAt && startedAt !== persisted.startedAt) {
+    persisted.totalOK = (persisted.totalOK || 0) + (persisted.epochOK || 0);
+    persisted.totalFail = (persisted.totalFail || 0) + (persisted.epochFail || 0);
+    persisted.startedAt = startedAt;
+  }
+  persisted.epochOK = epochOK;
+  persisted.epochFail = epochFail;
+  savePersistedStats(persisted);
+  routerStatsCache = { satusehatOK: (persisted.totalOK || 0) + epochOK, satusehatFail: (persisted.totalFail || 0) + epochFail, available: true };
   routerStatsCacheTime = Date.now();
   return routerStatsCache;
 }
@@ -459,7 +498,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/router-logs') {
-    const lines = parseInt(url.searchParams.get('lines') || '400', 10);
+    const lines = parseInt(url.searchParams.get('lines') || '2000', 10);
     try {
       const content = await getDockerLogs(lines);
       if (content === null) {

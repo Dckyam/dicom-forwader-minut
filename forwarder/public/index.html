@@ -511,7 +511,7 @@
     const el = document.getElementById('routerLogArea');
     el.textContent = 'Memuat...';
     try {
-      const d = await apiFetch('/api/router-logs?lines=400');
+      const d = await apiFetch('/api/router-logs?lines=2000');
       if (!d.available) {
         el.textContent = '⚠️ Log router tidak tersedia.\nPastikan volume ./logs:/router-logs:ro sudah di-mount di docker-compose.';
         return;
