@@ -140,7 +140,7 @@
 
 <header>
   <div>
-    <h1>DICOM Forwarder Dashboard Minut</h1>
+    <h1>DICOM Forwarder Dashboard Cibinong</h1>
     <div class="subtitle">SATUSEHAT Integration ImagingStudy Monitor</div>
   </div>
   <div id="scanBadge" class="badge idle"><span class="dot idle" id="scanDot"></span><span id="scanLabel">Idle</span></div>
@@ -183,9 +183,9 @@
     <div class="card" style="display:flex;flex-direction:column">
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('state',this)">State</button>
-        <button class="tab-btn" onclick="switchTab('responses',this)">Responses SatuSehat</button>
+        <button class="tab-btn" onclick="switchTab('responses',this)">Response Router</button>
         <button class="tab-btn" onclick="switchTab('log',this)">Log</button>
-        <button class="tab-btn" onclick="switchTab('router-log',this)">Log Router</button>
+        <button class="tab-btn" onclick="switchTab('router-log',this)">Responses SatuSehat</button>
       </div>
 
       <!-- State tab -->
@@ -242,7 +242,7 @@
       <!-- Router Log tab -->
       <div id="tab-router-log" class="tab-pane card-body">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:.75rem;color:#94a3b8">Log langsung dari container dicom-router</span>
+          <span style="font-size:.75rem;color:#94a3b8">Log langsung dari container dicom-router (via Docker API)</span>
           <button class="btn btn-outline" onclick="loadRouterLog()">↻ Refresh</button>
         </div>
         <div class="log-area" id="routerLogArea" style="color:#fbbf24">Klik Refresh untuk memuat log router...</div>

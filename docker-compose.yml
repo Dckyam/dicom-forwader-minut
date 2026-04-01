@@ -31,7 +31,9 @@ services:
     volumes:
       - "./state:/state"
       - "./logs:/router-logs:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
     environment:
+      - ROUTER_CONTAINER_NAME=dicom-router-minut
       - FTP_HOST=10.5.1.22
       - FTP_PORT=2121
       - FTP_USER=admin

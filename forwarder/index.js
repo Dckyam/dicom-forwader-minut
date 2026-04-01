@@ -22,6 +22,7 @@ const UI_PORT     = parseInt(process.env.UI_PORT     || '3000', 10);
 const STATE_DIR   = '/state';
 const LOG_FILE    = path.join(STATE_DIR, 'forwarder.log');
 const RESPONSE_LOG = path.join(STATE_DIR, 'responses.json');
+const ROUTER_CONTAINER_NAME = process.env.ROUTER_CONTAINER_NAME || 'dicom-router';
 
 if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true });
 
@@ -243,6 +244,50 @@ function tailLog(lines) {
 // ─────────────────────────────────────────────
 const ROUTER_LOGS_DIR = '/router-logs';
 
+function getDockerLogs(lines) {
+  return new Promise((resolve) => {
+    const req = http.request({
+      socketPath: '/var/run/docker.sock',
+      path: `/v1.41/containers/${ROUTER_CONTAINER_NAME}/logs?tail=${lines}&stdout=1&stderr=1&timestamps=0`,
+      method: 'GET'
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        const data = Buffer.concat(chunks);
+        let result = '';
+        let i = 0;
+        while (i + 8 <= data.length) {
+          const size = data.readUInt32BE(i + 4);
+          if (i + 8 + size > data.length) break;
+          result += data.slice(i + 8, i + 8 + size).toString('utf8');
+          i += 8 + size;
+        }
+        resolve(result);
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.end();
+  });
+}
+
+let routerStatsCache = { satusehatOK: 0, satusehatFail: 0, available: false };
+let routerStatsCacheTime = 0;
+
+async function getRouterStats() {
+  if (Date.now() - routerStatsCacheTime < 30000) return routerStatsCache;
+  const content = await getDockerLogs(10000);
+  if (!content) return routerStatsCache;
+  let satusehatOK = 0, satusehatFail = 0;
+  for (const line of content.split('\n')) {
+    if (line.includes('ImagingStudy POST-ed')) satusehatOK++;
+    if (line.includes('Could not process association')) satusehatFail++;
+  }
+  routerStatsCache = { satusehatOK, satusehatFail, available: true };
+  routerStatsCacheTime = Date.now();
+  return routerStatsCache;
+}
+
 function parseRouterStats() {
   let satusehatOK = 0, satusehatFail = 0;
   try {
@@ -310,7 +355,7 @@ const server = http.createServer(async (req, res) => {
       lastScanTime: lastScanTime ? lastScanTime.toISOString() : null,
       scheduledScans: nextScheduledScans.map(s => s.time.toISOString()),
       totalSentToRouter: sent.length,
-      routerStats: parseRouterStats(),
+      routerStats: await getRouterStats(),
       recentSent: sent.slice(0, 50)
     });
     return;
@@ -416,22 +461,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/router-logs') {
     const lines = parseInt(url.searchParams.get('lines') || '400', 10);
     try {
-      if (!fs.existsSync(ROUTER_LOGS_DIR)) {
+      const content = await getDockerLogs(lines);
+      if (content === null) {
         jsonResponse(res, 200, { available: false, content: '' });
-        return;
+      } else {
+        jsonResponse(res, 200, { available: true, content });
       }
-      const files = fs.readdirSync(ROUTER_LOGS_DIR)
-        .filter(f => !fs.statSync(path.join(ROUTER_LOGS_DIR, f)).isDirectory())
-        .sort();
-      let content = '';
-      for (const f of files) {
-        try { content += fs.readFileSync(path.join(ROUTER_LOGS_DIR, f), 'utf8'); } catch (_) {}
-      }
-      const allLines = content.split('\n');
-      const tail = allLines.slice(Math.max(0, allLines.length - lines)).join('\n');
-      jsonResponse(res, 200, { available: true, content: tail });
     } catch (err) {
-      jsonResponse(res, 500, { error: err.message });
+      jsonResponse(res, 200, { available: false, content: '' });
     }
     return;
   }
