@@ -367,28 +367,41 @@ function parseRouterStats() {
 async function getAccessionSummary() {
   const content = await getDockerLogs('all');
   if (!content) return { failed: [], succeeded: [] };
+  const lines = content.split('\n');
   const failedMap = new Map();
   const succeededMap = new Map();
-  let lastAcc = null;
-  let lastIuid = null;
-  for (const line of content.split('\n')) {
-    const accM = line.match(/Accession Number:\s*(\S+)/);
-    if (accM) { lastAcc = accM[1]; lastIuid = null; continue; }
-    const iuidM = line.match(/Study IUID:\s*(\S+)/);
-    if (iuidM) { lastIuid = iuidM[1]; continue; }
+
+  function lookback(idx) {
+    let acc = null, iuid = null;
+    for (let j = idx - 1; j >= Math.max(0, idx - 20); j--) {
+      if (!acc) {
+        const aM = lines[j].match(/Accession Number:\s*(\S+)/);
+        if (aM) { acc = aM[1].replace(/\r$/, ''); }
+      }
+      if (!iuid) {
+        const uM = lines[j].match(/Study IUID:\s*(\S+)/);
+        if (uM) { iuid = uM[1].replace(/\r$/, ''); }
+      }
+      if (acc && iuid) break;
+    }
+    return { acc, iuid };
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     if (line.includes('Failed to obtain Patient ID and ServiceRequest ID')) {
-      if (lastAcc) {
-        const prev = failedMap.get(lastAcc) || { accession: lastAcc, iuid: lastIuid, count: 0 };
-        failedMap.set(lastAcc, { ...prev, count: prev.count + 1, iuid: lastIuid || prev.iuid });
-        lastAcc = null; lastIuid = null;
+      const { acc, iuid } = lookback(i);
+      if (acc) {
+        const prev = failedMap.get(acc) || { accession: acc, iuid: iuid, count: 0 };
+        failedMap.set(acc, { ...prev, count: prev.count + 1, iuid: iuid || prev.iuid });
       }
       continue;
     }
-    const postM = line.match(/ImagingStudy POST-ed, id:\s*(\S+)/);
-    if (postM) {
-      if (lastAcc) {
-        succeededMap.set(lastAcc, { accession: lastAcc, iuid: lastIuid, imagingStudyId: postM[1] });
-        lastAcc = null; lastIuid = null;
+    if (line.includes('ImagingStudy POST-ed')) {
+      const idM = line.match(/ImagingStudy POST-ed[^a-z]*id[:\s=]+([\S]+)/i);
+      const { acc, iuid } = lookback(i);
+      if (acc) {
+        succeededMap.set(acc, { accession: acc, iuid: iuid, imagingStudyId: idM ? idM[1].replace(/[,\r]$/, '') : '—' });
       }
       continue;
     }
