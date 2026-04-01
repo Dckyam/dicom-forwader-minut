@@ -166,6 +166,18 @@ function todayPath() {
   return `/${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
 }
 
+function yesterdayPath() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `/${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function dayBeforePath() {
+  const d = new Date();
+  d.setDate(d.getDate() - 2);
+  return `/${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 function datePath(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   return `/${y}/${m}/${d}`;
@@ -207,29 +219,28 @@ async function runScan(scanPaths, label) {
 }
 
 // ─────────────────────────────────────────────
-//  SCHEDULER  — 06:00, 12:00, 18:00, 00:00
+//  SCHEDULER  — setiap hari jam 01:00 WITA (kirim H-2 + H-1)
 // ─────────────────────────────────────────────
-const SCHEDULE_HOURS = [0, 6, 12, 18];
+const SCHEDULE_HOUR = 1;
 
-function getNextScheduledTimes() {
+function getNextScheduledTime() {
   const now = new Date();
-  return SCHEDULE_HOURS.map(h => {
-    const t = new Date(now);
-    t.setHours(h, 0, 0, 0);
-    if (t <= now) t.setDate(t.getDate() + 1);
-    return { hour: h, time: t };
-  });
+  const t = new Date(now);
+  t.setHours(SCHEDULE_HOUR, 0, 0, 0);
+  if (t <= now) t.setDate(t.getDate() + 1);
+  return t;
 }
 
 function scheduleNext() {
-  nextScheduledScans = getNextScheduledTimes();
-  for (const { hour, time } of nextScheduledScans) {
-    const delay = time - Date.now();
-    log(`⏰ Next scan: ${time.toLocaleString('id-ID')} (jam ${String(hour).padStart(2,'0')}:00)`);
-    setTimeout(() => {
-      runScan([todayPath()], `scheduled-${String(hour).padStart(2,'0')}:00`).then(scheduleNext);
-    }, delay);
-  }
+  const time = getNextScheduledTime();
+  nextScheduledScans = [{ hour: SCHEDULE_HOUR, time }];
+  const delay = time - Date.now();
+  log(`⏰ Next scan: ${time.toLocaleString('id-ID')} (jam 01:00 WITA — H-2 + H-1)`);
+  setTimeout(async () => {
+    await runScan([dayBeforePath()], 'scheduled-01:00-H-2');
+    await runScan([yesterdayPath()], 'scheduled-01:00-H-1');
+    scheduleNext();
+  }, delay);
 }
 
 // ─────────────────────────────────────────────
