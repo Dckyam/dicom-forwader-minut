@@ -391,6 +391,7 @@
   let allState = [];
   let allAccBerhasil = [];
   let allAccGagal = [];
+  let selectedIndices = new Set();
   let allFiles = [];
   let countdown = 10;
   let countdownTimer;
@@ -749,6 +750,7 @@
       const d = await apiFetch(`/api/files?date=${date}`);
       allFiles = d.files || [];
       filePage = 1;
+      selectedIndices = new Set();
       const fs = document.getElementById('fileSearch'); if (fs) fs.value = '';
       renderFileTable();
       document.getElementById('fileListSection').style.display = 'block';
@@ -775,40 +777,52 @@
     const slice = filtered.slice((filePage-1)*PAGE_SIZE, filePage*PAGE_SIZE);
     tbody.innerHTML = slice.map((f) =>
       `<tr>
-        <td class="cb-col"><input type="checkbox" class="file-cb" data-i="${f._i}" onchange="updateSelectedCount()" /></td>
+        <td class="cb-col"><input type="checkbox" class="file-cb" data-i="${f._i}" ${selectedIndices.has(f._i) ? 'checked' : ''} onchange="toggleFileSelection(this)" /></td>
         <td class="path-cell">${esc(f.path)}</td>
         <td>${f.sent ? '<span class="status-skip">Terkirim</span>' : '<span style="color:#fbbf24">Belum</span>'}</td>
       </tr>`
     ).join('');
+    const allFilteredSelected = filtered.length > 0 && filtered.every(f => selectedIndices.has(f._i));
+    document.getElementById('selectAll').checked    = allFilteredSelected;
+    document.getElementById('selectAllTop').checked = allFilteredSelected;
     renderPagination('filePagination', filePage, filtered.length, 'gotoFilePage');
     updateSelectedCount();
   }
   function gotoFilePage(p) { filePage = p; renderFileTable(); }
 
+  function toggleFileSelection(cb) {
+    const i = parseInt(cb.dataset.i);
+    if (cb.checked) selectedIndices.add(i); else selectedIndices.delete(i);
+    updateSelectedCount();
+  }
+
   function toggleAll(master) {
-    document.querySelectorAll('.file-cb').forEach(cb => cb.checked = master.checked);
+    const q = (document.getElementById('fileSearch')?.value || '').toLowerCase();
+    const filtered = q ? allFiles.map((f, i) => ({...f, _i: i})).filter(f => f.path.toLowerCase().includes(q)) : allFiles.map((f, i) => ({...f, _i: i}));
+    filtered.forEach(f => { if (master.checked) selectedIndices.add(f._i); else selectedIndices.delete(f._i); });
     document.getElementById('selectAll').checked    = master.checked;
     document.getElementById('selectAllTop').checked = master.checked;
+    document.querySelectorAll('.file-cb').forEach(cb => cb.checked = master.checked);
     updateSelectedCount();
   }
 
   function selectUnsent() {
+    allFiles.forEach((f, i) => { if (!f.sent) selectedIndices.add(i); });
     document.querySelectorAll('.file-cb').forEach(cb => {
-      cb.checked = !allFiles[parseInt(cb.dataset.i)].sent;
+      cb.checked = selectedIndices.has(parseInt(cb.dataset.i));
     });
     updateSelectedCount();
   }
 
   function updateSelectedCount() {
-    const n = document.querySelectorAll('.file-cb:checked').length;
+    const n = selectedIndices.size;
     document.getElementById('selectedCount').textContent = n > 0 ? `${n} dipilih` : '';
   }
 
   async function sendSelected() {
     const date = document.getElementById('dateInput').value;
-    const checked = [...document.querySelectorAll('.file-cb:checked')];
-    if (checked.length === 0) { showToast('Pilih minimal satu file.'); return; }
-    const paths = checked.map(cb => allFiles[parseInt(cb.dataset.i)].path);
+    if (selectedIndices.size === 0) { showToast('Pilih minimal satu file.'); return; }
+    const paths = [...selectedIndices].map(i => allFiles[i].path);
 
     document.getElementById('btnSend').disabled = true;
     document.getElementById('sendStatus').textContent = 'Mengirim...';
