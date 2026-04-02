@@ -226,7 +226,7 @@ async function runScan(scanPaths, label) {
 // ─────────────────────────────────────────────
 //  SCHEDULER  — setiap hari jam 03:00 WITA (kirim H-1 = 02:00-01:59)
 // ─────────────────────────────────────────────
-const SCHEDULE_HOUR = 3;
+const SCHEDULE_HOUR = parseInt(process.env.SCHEDULE_HOUR || '3', 10);
 
 function getNextScheduledTime() {
   const now = new Date();
@@ -240,10 +240,10 @@ function scheduleNext() {
   const time = getNextScheduledTime();
   nextScheduledScans = [{ hour: SCHEDULE_HOUR, time }];
   const delay = time - Date.now();
-  log(`⏰ Next scan: ${time.toLocaleString('id-ID')} (jam 03:00 WITA — H-1 kirim 02:00-01:59)`);
+  log(`⏰ Next scan: ${time.toLocaleString('id-ID')} (jam ${String(SCHEDULE_HOUR).padStart(2,'0')}:00 WIB — H-1)`);
   setTimeout(async () => {
     // Kirim H-1: kemarin full (02:00-23:59) + hari ini jam 00 & 01 (00:00-01:59)
-    await runScan([yesterdayPath(), todayHourPath(0), todayHourPath(1)], 'scheduled-03:00-H-1');
+    await runScan([yesterdayPath(), todayHourPath(0), todayHourPath(1)], `scheduled-${String(SCHEDULE_HOUR).padStart(2,'0')}:00-H-1`);
     scheduleNext();
   }, delay);
 }

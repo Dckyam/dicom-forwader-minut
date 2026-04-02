@@ -44,7 +44,8 @@ services:
       - ROUTER_PORT=11112
       - MAX_RETRIES=3
       - UI_PORT=3000
-      - TZ=Asia/Makassar
+      - TZ=Asia/Jakarta
+      - SCHEDULE_HOUR=2
     depends_on:
       - dicom-router
     networks:
