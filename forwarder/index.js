@@ -178,12 +178,6 @@ function yesterdayPath() {
   return `/${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function dayBeforePath() {
-  const d = new Date();
-  d.setDate(d.getDate() - 2);
-  return `/${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 function todayHourPath(hour) {
   const now = new Date();
   return `/${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}/${hour}`;
@@ -248,7 +242,7 @@ function scheduleNext() {
   const delay = time - Date.now();
   log(`⏰ Next scan: ${time.toLocaleString('id-ID')} (jam ${String(SCHEDULE_HOUR).padStart(2,'0')}:00 WIB — H-1)`);
   setTimeout(async () => {
-    // Kirim H-1: kemarin full (02:00-23:59) + hari ini jam 00 & 01 (00:00-01:59)
+    // Kirim H-1: kemarin full (00:00-23:59) + hari ini jam 00 & 01 (00:00-01:59)
     await runScan([yesterdayPath(), todayHourPath(0), todayHourPath(1)], `scheduled-${String(SCHEDULE_HOUR).padStart(2,'0')}:00-H-1`);
     scheduleNext();
   }, delay);
@@ -657,6 +651,6 @@ server.listen(UI_PORT, () => {
 });
 
 log(`🚀 DICOM FTP Forwarder starting — ${FTP_HOST}:${FTP_PORT} -> ${ROUTER_AET}@${ROUTER_HOST}:${ROUTER_PORT}`);
-log('⏰ Scheduled scans: 06:00, 12:00, 18:00, 00:00');
+log(`⏰ Scheduled scan: 1x sehari jam ${String(SCHEDULE_HOUR).padStart(2,'0')}:00 — kirim H-1`);
 
 scheduleNext();
