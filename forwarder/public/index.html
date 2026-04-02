@@ -645,6 +645,7 @@
       accGagalPage = 1;
       renderAccBerhasil();
       renderAccGagal();
+      document.getElementById('statSatusehatOK').textContent = allAccBerhasil.length;
       document.getElementById('statAccGagal').textContent = allAccGagal.length;
     } catch (e) {
       document.getElementById('accBerhasilTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:20px">Gagal memuat data.</td></tr>';
