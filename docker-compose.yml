@@ -11,8 +11,8 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - ORG_ID=100027411
-      - CLIENT=A9rCi3e2tr3RDuULjbjUI3IthglbeLV67I9ZGIxZsBdBK8cH
-      - SECRET=8k77IYkCcWHAMoAUoPlpRSaJ2aC1EV1WxG9orMG8ZcBY6XjAgHhI6Pp190IGfm1L
+      - CLIENT=EPF1G1pSX9uwVcf90pgS0L4Gx3WSVGjf0Bo91FqcJKF8sAL7
+      - SECRET=y88Wp2JSxDeNRP01BM4GBqWkVZXslXd5lNXR1ytTyk7Iy8jHP2ZFEBGXOs0DJG2P
       - URL=https://api-satusehat.kemkes.go.id
       - AE_TITLE=DCMROUTER
     entrypoint: ["/bin/bash", "-c", "/app/entrypoint.sh 2>&1 | tee -a /app/logs/router.log"]
