@@ -151,8 +151,9 @@
     <div class="subtitle">SATUSEHAT Integration ImagingStudy Monitor</div>
   </div>
   <div id="scanBadge" class="badge idle"><span class="dot idle" id="scanDot"></span><span id="scanLabel">Idle</span></div>
-  <div style="margin-left:auto;font-size:.75rem;color:#64748b">
-    Auto-refresh: <span id="refreshCountdown">10</span>s
+  <div style="margin-left:auto;font-size:.75rem;color:#64748b;display:flex;gap:16px;align-items:center">
+    <span>Scan Terakhir: <span id="headerLastScan" style="color:#a78bfa">—</span></span>
+    <span>Auto-refresh: <span id="refreshCountdown">10</span>s</span>
   </div>
 </header>
 
@@ -162,22 +163,23 @@
   <div class="grid grid-4" style="margin-bottom:16px">
     <div class="card stat-card">
       <div class="stat-num" id="statTotal" style="color:#60a5fa">—</div>
-      <div class="stat-label">Total Dikirim ke Router</div>
+      <div class="stat-label">Total Path Dikirim ke Router</div>
       <div style="font-size:.68rem;color:#475569;margin-top:4px">storescu OK (.sent files)</div>
     </div>
     <div class="card stat-card">
+      <div class="stat-num" id="statAccGagal" style="color:#f87171">—</div>
+      <div class="stat-label">Acc Number Gagal ke SatuSehat</div>
+      <div style="font-size:.68rem;color:#475569;margin-top:4px">dari tab Acc Gagal</div>
+    </div>
+    <div class="card stat-card">
       <div class="stat-num" id="statSatusehatOK" style="color:#4ade80">—</div>
-      <div class="stat-label">Berhasil ke SatuSehat</div>
+      <div class="stat-label">Acc Berhasil ke SatuSehat</div>
       <div style="font-size:.68rem;color:#475569;margin-top:4px">ImagingStudy POST-ed</div>
     </div>
     <div class="card stat-card">
       <div class="stat-num" id="statSatusehatFail" style="color:#f87171">—</div>
-      <div class="stat-label">Gagal di SatuSehat</div>
+      <div class="stat-label">Path Gagal Kirim SatuSehat</div>
       <div style="font-size:.68rem;color:#475569;margin-top:4px">ServiceRequest not found</div>
-    </div>
-    <div class="card stat-card">
-      <div class="stat-num" id="statLast" style="font-size:1rem;color:#a78bfa">—</div>
-      <div class="stat-label">Scan Terakhir</div>
     </div>
   </div>
   <div id="routerLogWarning" style="display:none;background:#1a1200;border:1px solid #854d0e;color:#fbbf24;padding:8px 14px;border-radius:6px;font-size:.75rem;margin-bottom:12px">
@@ -445,7 +447,7 @@
       }
 
       document.getElementById('statTotal').textContent = d.totalSentToRouter;
-      document.getElementById('statLast').textContent  = timeSince(d.lastScanTime);
+      document.getElementById('headerLastScan').textContent = timeSince(d.lastScanTime);
 
       // SatuSehat stats from router logs
       const rs = d.routerStats || {};
@@ -620,6 +622,7 @@
       accGagalPage = 1;
       renderAccBerhasil();
       renderAccGagal();
+      document.getElementById('statAccGagal').textContent = allAccGagal.length;
     } catch (e) {
       document.getElementById('accBerhasilTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:20px">Gagal memuat data.</td></tr>';
       document.getElementById('accGagalTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:20px">Gagal memuat data.</td></tr>';
