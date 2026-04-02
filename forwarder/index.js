@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const os   = require('os');
 const { spawn } = require('child_process');
 const ftp  = require('basic-ftp');
+const mysql = require('mysql2/promise');
 
 // ─────────────────────────────────────────────
 //  CONFIG
@@ -23,6 +24,11 @@ const STATE_DIR   = '/state';
 const LOG_FILE    = path.join(STATE_DIR, 'forwarder.log');
 const RESPONSE_LOG = path.join(STATE_DIR, 'responses.json');
 const ROUTER_CONTAINER_NAME = process.env.ROUTER_CONTAINER_NAME || 'dicom-router';
+const DB_HOST = process.env.DB_HOST || FTP_HOST;
+const DB_PORT = 3306;
+const DB_USER = 'pacs';
+const DB_PASS = 'pacs';
+const DB_NAME = 'pacsdb';
 
 if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true });
 
@@ -604,8 +610,44 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'POST' && pathname === '/api/get-path-by-acc') {
+    let body;
+    try { body = JSON.parse(await readBody(req)); }
+    catch (_) { jsonResponse(res, 400, { error: 'Body JSON tidak valid' }); return; }
+    const { accessions } = body;
+    if (!Array.isArray(accessions) || accessions.length === 0) {
+      jsonResponse(res, 400, { error: 'Harus ada accessions (array)' }); return;
+    }
+    try {
+      const conn = await mysql.createConnection({
+        host: DB_HOST, port: DB_PORT, user: DB_USER, password: DB_PASS,
+        database: DB_NAME, connectTimeout: 8000
+      });
+      try {
+        const placeholders = accessions.map(() => '?').join(',');
+        const sql =
+          'SELECT f.pk, st.accession_no, f.filepath, s.series_desc, st.created_time ' +
+          'FROM files AS f ' +
+          'JOIN instance AS i ON f.instance_fk = i.pk ' +
+          'JOIN series AS s ON i.series_fk = s.pk ' +
+          'JOIN study AS st ON s.study_fk = st.pk ' +
+          'JOIN patient AS p ON st.patient_fk = p.pk ' +
+          'WHERE st.accession_no IN (' + placeholders + ') ' +
+          'ORDER BY f.pk, s.series_desc DESC';
+        const [rows] = await conn.execute(sql, accessions);
+        jsonResponse(res, 200, { rows });
+      } finally {
+        await conn.end();
+      }
+    } catch (err) {
+      log('\u274C get-path-by-acc error:', err.message);
+      jsonResponse(res, 500, { error: err.message });
+    }
+    return;
+  }
+
   res.writeHead(404); res.end('Not found');
-});
+})
 
 // ─────────────────────────────────────────────
 //  STARTUP

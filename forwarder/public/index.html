@@ -299,6 +299,29 @@
     <!-- RIGHT: Send panel + Schedule -->
     <div style="display:flex;flex-direction:column;gap:16px">
 
+      <!-- Get Path by Acc Number -->
+      <div class="card">
+        <div class="card-header">Get Path by Acc Number</div>
+        <div class="card-body" style="padding:14px">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input type="text" id="accSearchInput"
+              placeholder="Acc number, pisah koma: 145020, 145021, ..."
+              style="flex:1;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:.78rem;font-family:monospace"
+              onkeydown="if(event.key==='Enter')searchByAcc()" />
+            <button class="btn btn-primary" onclick="searchByAcc()" style="padding:5px 14px;font-size:.78rem;white-space:nowrap">🔍 Cari</button>
+          </div>
+          <div id="accSearchStatus" style="font-size:.72rem;color:#64748b;margin-bottom:6px"></div>
+          <div class="table-wrap" style="max-height:220px">
+            <table>
+              <thead><tr><th>PK</th><th>Acc No</th><th>File Path</th><th>Series</th><th>Created</th></tr></thead>
+              <tbody id="accSearchTable">
+                <tr><td colspan="5" style="text-align:center;color:#64748b;padding:16px">Masukkan acc number lalu klik Cari</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Send Panel -->
       <div class="card">
         <div class="card-header">
@@ -803,6 +826,45 @@
       document.getElementById('sendStatus').textContent = '';
     }
     document.getElementById('btnSend').disabled = false;
+  }
+
+  // ─── Get Path by Acc Number ───────────────────────────────
+  async function searchByAcc() {
+    const raw = document.getElementById('accSearchInput').value.trim();
+    if (!raw) return;
+    const accessions = raw.split(',').map(s => s.trim()).filter(Boolean);
+    if (accessions.length === 0) return;
+    const status = document.getElementById('accSearchStatus');
+    const tbody  = document.getElementById('accSearchTable');
+    status.textContent = 'Mencari...';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:16px">Mencari...</td></tr>';
+    try {
+      const res = await fetch('/api/get-path-by-acc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessions })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error');
+      const rows = data.rows || [];
+      status.textContent = rows.length + ' path ditemukan';
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:16px">Tidak ada data untuk acc number tersebut</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(r =>
+          '<tr>' +
+          '<td style="color:#64748b;font-size:.72rem">' + esc(String(r.pk)) + '</td>' +
+          '<td style="font-family:monospace;font-size:.76rem;color:#60a5fa">' + esc(r.accession_no) + '</td>' +
+          '<td style="font-family:monospace;font-size:.75rem">' + esc(r.filepath) + '</td>' +
+          '<td style="font-size:.72rem;color:#94a3b8">' + esc(r.series_desc ?? '\u2014') + '</td>' +
+          '<td style="font-size:.72rem;color:#64748b">' + (r.created_time ? new Date(r.created_time).toLocaleString('id-ID') : '\u2014') + '</td>' +
+          '</tr>'
+        ).join('');
+      }
+    } catch (err) {
+      status.textContent = 'Error: ' + err.message;
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;padding:16px">' + esc(err.message) + '</td></tr>';
+    }
   }
 
   // ─── Toast ────────────────────────────────────────────────
