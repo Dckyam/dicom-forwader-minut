@@ -62,6 +62,13 @@
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
 
+    /* Pagination */
+    .pg-bar { display:flex; align-items:center; gap:6px; justify-content:center; padding:8px 12px; border-top:1px solid #2d3748; flex-wrap:wrap; background:#151921; }
+    .pg-btn { padding:4px 10px; border-radius:4px; border:1px solid #334155; background:#1e293b; color:#cbd5e1; cursor:pointer; font-size:.75rem; }
+    .pg-btn:hover:not(:disabled) { background:#2d3748; }
+    .pg-btn:disabled { opacity:.3; cursor:not-allowed; }
+    .pg-info { font-size:.74rem; color:#64748b; padding:0 6px; white-space:nowrap; }
+
     /* Table */
     .table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: .78rem; }
@@ -193,7 +200,7 @@
       <!-- State tab -->
       <div id="tab-state" class="tab-pane active card-body" style="padding:0">
         <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748">
-          <input id="stateSearch" type="text" placeholder="🔍 Cari path..." oninput="renderStateTable()"
+          <input id="stateSearch" type="text" placeholder="🔍 Cari path..." oninput="statePage=1;renderStateTable()"
             style="flex:1;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:5px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
           <span id="stateCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
         </div>
@@ -203,6 +210,7 @@
             <tbody id="stateTable"><tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr></tbody>
           </table>
         </div>
+        <div id="statePagination" class="pg-bar" style="display:none"></div>
         <div style="padding:10px 12px;border-top:1px solid #2d3748;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span id="stateSelectedCount" style="font-size:.75rem;color:#94a3b8"></span>
           <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
@@ -216,12 +224,12 @@
       <div id="tab-responses" class="tab-pane card-body" style="padding:0">
         <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748;flex-wrap:wrap">
           <label style="margin:0">Filter:</label>
-          <select id="respFilter" onchange="renderResponses()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:.78rem">
+          <select id="respFilter" onchange="respPage=1;renderResponses()" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:.78rem">
             <option value="ALL">Semua</option>
             <option value="OK">Berhasil</option>
             <option value="FAIL">Gagal</option>
           </select>
-          <input id="respSearch" type="text" placeholder="🔍 Cari path..." oninput="renderResponses()"
+          <input id="respSearch" type="text" placeholder="🔍 Cari path..." oninput="respPage=1;renderResponses()"
             style="flex:1;min-width:160px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
           <span id="respCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
         </div>
@@ -231,6 +239,7 @@
             <tbody id="respTable"><tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr></tbody>
           </table>
         </div>
+        <div id="respPagination" class="pg-bar" style="display:none"></div>
       </div>
 
       <!-- Log tab -->
@@ -253,7 +262,7 @@
       <!-- Acc Berhasil tab -->
       <div id="tab-acc-berhasil" class="tab-pane card-body" style="padding:0">
         <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748;flex-wrap:wrap">
-          <input id="accBerhasilSearch" type="text" placeholder="🔍 Cari accession/id..." oninput="renderAccBerhasil()"
+          <input id="accBerhasilSearch" type="text" placeholder="🔍 Cari accession/id..." oninput="accBerhasilPage=1;renderAccBerhasil()"
             style="flex:1;min-width:160px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:5px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
           <span id="accBerhasilCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
           <button class="btn btn-outline" onclick="loadAccessionSummary()" style="padding:4px 10px;font-size:.75rem">↻ Refresh</button>
@@ -264,12 +273,13 @@
             <tbody id="accBerhasilTable"><tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Klik tab untuk memuat data...</td></tr></tbody>
           </table>
         </div>
+        <div id="accBerhasilPagination" class="pg-bar" style="display:none"></div>
       </div>
 
       <!-- Acc Gagal tab -->
       <div id="tab-acc-gagal" class="tab-pane card-body" style="padding:0">
         <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3748;flex-wrap:wrap">
-          <input id="accGagalSearch" type="text" placeholder="🔍 Cari accession..." oninput="renderAccGagal()"
+          <input id="accGagalSearch" type="text" placeholder="🔍 Cari accession..." oninput="accGagalPage=1;renderAccGagal()"
             style="flex:1;min-width:160px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:5px 10px;border-radius:4px;font-size:.78rem;font-family:monospace" />
           <span id="accGagalCount" style="font-size:.72rem;color:#64748b;white-space:nowrap"></span>
           <button class="btn btn-outline" onclick="loadAccessionSummary()" style="padding:4px 10px;font-size:.75rem">↻ Refresh</button>
@@ -280,6 +290,7 @@
             <tbody id="accGagalTable"><tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Klik tab untuk memuat data...</td></tr></tbody>
           </table>
         </div>
+        <div id="accGagalPagination" class="pg-bar" style="display:none"></div>
       </div>
     </div>
 
@@ -307,7 +318,7 @@
               <span id="unsentCount"></span>
             </div>
             <div style="margin:8px 0">
-              <input type="text" id="fileSearch" placeholder="🔍 Cari path..." oninput="renderFileTable()" style="width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:.82rem;box-sizing:border-box" />
+              <input type="text" id="fileSearch" placeholder="🔍 Cari path..." oninput="filePage=1;renderFileTable()" style="width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:.82rem;box-sizing:border-box" />
             </div>
             <div class="select-all-row">
               <input type="checkbox" id="selectAll" onchange="toggleAll(this)" />
@@ -320,6 +331,7 @@
                 <tbody id="fileTable"></tbody>
               </table>
             </div>
+            <div id="filePagination" class="pg-bar" style="display:none"></div>
             <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-success" onclick="sendSelected()" id="btnSend">✅ Kirim Terpilih</button>
               <button class="btn btn-outline" onclick="selectUnsent()">Pilih Belum Terkirim</button>
@@ -349,6 +361,7 @@
 
 <script>
   // ─── State ─────────────────────────────────────────────
+  const PAGE_SIZE = 50;
   let allResponses = [];
   let allState = [];
   let allAccBerhasil = [];
@@ -356,6 +369,21 @@
   let allFiles = [];
   let countdown = 10;
   let countdownTimer;
+  let statePage = 1, respPage = 1, accBerhasilPage = 1, accGagalPage = 1, filePage = 1;
+
+  function renderPagination(id, page, total, goFn) {
+    const el = document.getElementById(id);
+    const pages = Math.ceil(total / PAGE_SIZE);
+    if (pages <= 1) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+    const start = (page-1)*PAGE_SIZE+1, end = Math.min(page*PAGE_SIZE, total);
+    el.innerHTML =
+      `<button class="pg-btn" onclick="${goFn}(1)" ${page===1?'disabled':''}>\u00ab</button>` +
+      `<button class="pg-btn" onclick="${goFn}(${page-1})" ${page===1?'disabled':''}>\u2039 Prev</button>` +
+      `<span class="pg-info">${start}\u2013${end} dari ${total} &nbsp;|&nbsp; Hal ${page} / ${pages}</span>` +
+      `<button class="pg-btn" onclick="${goFn}(${page+1})" ${page===pages?'disabled':''}>Next \u203a</button>` +
+      `<button class="pg-btn" onclick="${goFn}(${pages})" ${page===pages?'disabled':''}>\u00bb</button>`;
+  }
 
   // ─── Tab switcher ───────────────────────────────────────
   function switchTab(name, btn) {
@@ -396,6 +424,7 @@
     try {
       document.getElementById('stateTable').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">Memuat...</td></tr>';
       allState = await apiFetch('/api/state');
+      statePage = 1;
       renderStateTable();
     } catch (e) { document.getElementById('stateTable').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#f87171;padding:20px">Gagal memuat state.</td></tr>'; }
   }
@@ -455,16 +484,22 @@
     document.getElementById('stateCount').textContent = q ? `${data.length} dari ${allState.length}` : `${allState.length} total`;
     if (data.length === 0) {
       tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">${q ? 'Tidak ada hasil untuk "' + esc(q) + '"' : 'Belum ada data terkirim'}</td></tr>`;
+      renderPagination('statePagination', 1, 0, 'gotoStatePage');
       return;
     }
-    tbody.innerHTML = data.map(s =>
+    const pages = Math.ceil(data.length / PAGE_SIZE);
+    if (statePage > pages) statePage = pages;
+    const slice = data.slice((statePage-1)*PAGE_SIZE, statePage*PAGE_SIZE);
+    tbody.innerHTML = slice.map(s =>
       `<tr>
         <td class="cb-col"><input type="checkbox" class="state-cb" data-path="${esc(s.path)}" onchange="updateStateSelectedCount()" /></td>
         <td style="white-space:nowrap;color:#94a3b8;font-size:.72rem">${fmtTime(s.ts)}</td>
         <td class="path-cell">${esc(s.path)}</td>
       </tr>`
     ).join('');
+    renderPagination('statePagination', statePage, data.length, 'gotoStatePage');
   }
+  function gotoStatePage(p) { statePage = p; renderStateTable(); }
 
   function toggleStateAll(master) {
     document.querySelectorAll('.state-cb').forEach(cb => cb.checked = master.checked);
@@ -514,6 +549,7 @@
   async function loadResponses() {
     try {
       allResponses = await apiFetch('/api/responses?limit=500');
+      respPage = 1;
       renderResponses();
     } catch (e) { console.error('responses error', e); }
   }
@@ -523,13 +559,17 @@
     const q      = (document.getElementById('respSearch').value || '').toLowerCase();
     let data = filter === 'ALL' ? allResponses : allResponses.filter(r => r.status === filter);
     if (q) data = data.filter(r => r.path.toLowerCase().includes(q));
-    document.getElementById('respCount').textContent = q || filter !== 'ALL' ? `${data.length} hasil` : '';
+    document.getElementById('respCount').textContent = q || filter !== 'ALL' ? `${data.length} hasil` : `${data.length} total`;
     const tbody  = document.getElementById('respTable');
     if (data.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">Tidak ada data</td></tr>';
+      renderPagination('respPagination', 1, 0, 'gotoRespPage');
       return;
     }
-    tbody.innerHTML = data.slice(0, 300).map(r => {
+    const pages = Math.ceil(data.length / PAGE_SIZE);
+    if (respPage > pages) respPage = pages;
+    const slice = data.slice((respPage-1)*PAGE_SIZE, respPage*PAGE_SIZE);
+    tbody.innerHTML = slice.map(r => {
       const cls = r.status === 'OK' ? 'status-ok' : 'status-fail';
       const detail = r.detail ? esc(r.detail.substring(0, 120)) : '';
       return `<tr>
@@ -539,7 +579,9 @@
         <td style="font-size:.7rem;color:#94a3b8;max-width:200px;overflow:hidden;text-overflow:ellipsis">${detail}</td>
       </tr>`;
     }).join('');
+    renderPagination('respPagination', respPage, data.length, 'gotoRespPage');
   }
+  function gotoRespPage(p) { respPage = p; renderResponses(); }
 
   // ─── Load log ────────────────────────────────────────────
   async function loadLog() {
@@ -574,6 +616,8 @@
       const d = await apiFetch('/api/accession-summary');
       allAccBerhasil = d.succeeded || [];
       allAccGagal = d.failed || [];
+      accBerhasilPage = 1;
+      accGagalPage = 1;
       renderAccBerhasil();
       renderAccGagal();
     } catch (e) {
@@ -585,38 +629,52 @@
   function renderAccBerhasil() {
     const q = (document.getElementById('accBerhasilSearch')?.value || '').toLowerCase();
     const filtered = q ? allAccBerhasil.filter(a => a.accession.toLowerCase().includes(q) || (a.imagingStudyId || '').toLowerCase().includes(q)) : allAccBerhasil;
-    document.getElementById('accBerhasilCount').textContent = `${filtered.length} / ${allAccBerhasil.length}`;
+    document.getElementById('accBerhasilCount').textContent = q ? `${filtered.length} / ${allAccBerhasil.length}` : `${allAccBerhasil.length} total`;
     if (filtered.length === 0) {
       document.getElementById('accBerhasilTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">' + (q ? 'Tidak ada hasil' : 'Belum ada accession berhasil') + '</td></tr>';
+      renderPagination('accBerhasilPagination', 1, 0, 'gotoAccBerhasilPage');
       return;
     }
-    document.getElementById('accBerhasilTable').innerHTML = filtered.map((a, i) =>
+    const pages = Math.ceil(filtered.length / PAGE_SIZE);
+    if (accBerhasilPage > pages) accBerhasilPage = pages;
+    const slice = filtered.slice((accBerhasilPage-1)*PAGE_SIZE, accBerhasilPage*PAGE_SIZE);
+    const offset = (accBerhasilPage-1)*PAGE_SIZE;
+    document.getElementById('accBerhasilTable').innerHTML = slice.map((a, i) =>
       `<tr>
-        <td style="color:#64748b;text-align:center">${i+1}</td>
+        <td style="color:#64748b;text-align:center">${offset+i+1}</td>
         <td><span style="font-family:monospace;font-size:.82rem;color:#4ade80;font-weight:600">${esc(a.accession)}</span></td>
         <td style="font-family:monospace;font-size:.72rem;color:#93c5fd">${esc(a.imagingStudyId || '—')}</td>
         <td class="path-cell" style="font-size:.68rem;color:#64748b">${esc(a.iuid || '—')}</td>
       </tr>`
     ).join('');
+    renderPagination('accBerhasilPagination', accBerhasilPage, filtered.length, 'gotoAccBerhasilPage');
   }
+  function gotoAccBerhasilPage(p) { accBerhasilPage = p; renderAccBerhasil(); }
 
   function renderAccGagal() {
     const q = (document.getElementById('accGagalSearch')?.value || '').toLowerCase();
     const filtered = q ? allAccGagal.filter(a => a.accession.toLowerCase().includes(q)) : allAccGagal;
-    document.getElementById('accGagalCount').textContent = `${filtered.length} / ${allAccGagal.length}`;
+    document.getElementById('accGagalCount').textContent = q ? `${filtered.length} / ${allAccGagal.length}` : `${allAccGagal.length} total`;
     if (filtered.length === 0) {
       document.getElementById('accGagalTable').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px">' + (q ? 'Tidak ada hasil' : 'Belum ada accession gagal') + '</td></tr>';
+      renderPagination('accGagalPagination', 1, 0, 'gotoAccGagalPage');
       return;
     }
-    document.getElementById('accGagalTable').innerHTML = filtered.map((a, i) =>
+    const pages = Math.ceil(filtered.length / PAGE_SIZE);
+    if (accGagalPage > pages) accGagalPage = pages;
+    const slice = filtered.slice((accGagalPage-1)*PAGE_SIZE, accGagalPage*PAGE_SIZE);
+    const offset = (accGagalPage-1)*PAGE_SIZE;
+    document.getElementById('accGagalTable').innerHTML = slice.map((a, i) =>
       `<tr>
-        <td style="color:#64748b;text-align:center">${i+1}</td>
+        <td style="color:#64748b;text-align:center">${offset+i+1}</td>
         <td><span style="font-family:monospace;font-size:.82rem;color:#f87171;font-weight:600">${esc(a.accession)}</span></td>
         <td style="text-align:center"><span class="badge" style="background:#3b1010;color:#f87171;padding:2px 8px">${a.count}×</span></td>
         <td class="path-cell" style="font-size:.68rem;color:#64748b">${esc(a.iuid || '—')}</td>
       </tr>`
     ).join('');
+    renderPagination('accGagalPagination', accGagalPage, filtered.length, 'gotoAccGagalPage');
   }
+  function gotoAccGagalPage(p) { accGagalPage = p; renderAccGagal(); }
 
   // ─── Delete state ─────────────────────────────────────────
   async function deleteStateSelected() {
@@ -663,6 +721,7 @@
     try {
       const d = await apiFetch(`/api/files?date=${date}`);
       allFiles = d.files || [];
+      filePage = 1;
       const fs = document.getElementById('fileSearch'); if (fs) fs.value = '';
       renderFileTable();
       document.getElementById('fileListSection').style.display = 'block';
@@ -681,17 +740,23 @@
     const filtered = q ? allFiles.map((f, i) => ({...f, _i: i})).filter(f => f.path.toLowerCase().includes(q)) : allFiles.map((f, i) => ({...f, _i: i}));
     if (filtered.length === 0) {
       tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px">' + (q ? 'Tidak ada hasil untuk pencarian ini' : 'Tidak ada file di tanggal ini') + '</td></tr>';
+      renderPagination('filePagination', 1, 0, 'gotoFilePage');
       return;
     }
-    tbody.innerHTML = filtered.map((f) =>
+    const pages = Math.ceil(filtered.length / PAGE_SIZE);
+    if (filePage > pages) filePage = pages;
+    const slice = filtered.slice((filePage-1)*PAGE_SIZE, filePage*PAGE_SIZE);
+    tbody.innerHTML = slice.map((f) =>
       `<tr>
         <td class="cb-col"><input type="checkbox" class="file-cb" data-i="${f._i}" onchange="updateSelectedCount()" /></td>
         <td class="path-cell">${esc(f.path)}</td>
         <td>${f.sent ? '<span class="status-skip">Terkirim</span>' : '<span style="color:#fbbf24">Belum</span>'}</td>
       </tr>`
     ).join('');
+    renderPagination('filePagination', filePage, filtered.length, 'gotoFilePage');
     updateSelectedCount();
   }
+  function gotoFilePage(p) { filePage = p; renderFileTable(); }
 
   function toggleAll(master) {
     document.querySelectorAll('.file-cb').forEach(cb => cb.checked = master.checked);
@@ -701,8 +766,8 @@
   }
 
   function selectUnsent() {
-    document.querySelectorAll('.file-cb').forEach((cb, i) => {
-      cb.checked = !allFiles[i].sent;
+    document.querySelectorAll('.file-cb').forEach(cb => {
+      cb.checked = !allFiles[parseInt(cb.dataset.i)].sent;
     });
     updateSelectedCount();
   }
