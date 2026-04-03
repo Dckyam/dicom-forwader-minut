@@ -112,20 +112,24 @@ async function ftpConnect() {
 }
 
 // ─────────────────────────────────────────────
-//  PROCESS ONE FILE
+//  PROCESS ONE FILE  (opens its own FTP connection per file)
 // ─────────────────────────────────────────────
-async function processFile(client, ftpPath) {
+async function processFile(ftpPath) {
   if (alreadySent(ftpPath)) { log('⏩ SKIP already sent', ftpPath); return; }
 
   const tmpFile = path.join(os.tmpdir(), `dcm_${crypto.randomBytes(6).toString('hex')}`);
   let downloaded = false;
   for (let dlAttempt = 1; dlAttempt <= 3; dlAttempt++) {
+    let dlClient;
     try {
-      await client.downloadTo(tmpFile, ftpPath);
+      dlClient = await ftpConnect();
+      await dlClient.downloadTo(tmpFile, ftpPath);
+      dlClient.close();
       log('⬇️  Downloaded', ftpPath);
       downloaded = true;
       break;
     } catch (err) {
+      try { if (dlClient) dlClient.close(); } catch (_) {}
       log(`FTP download error (${dlAttempt}/3):`, ftpPath, ':', err.message);
       if (fs.existsSync(tmpFile)) { try { fs.unlinkSync(tmpFile); } catch (_) {} }
       if (dlAttempt < 3) {
@@ -198,26 +202,26 @@ async function runScan(scanPaths, label) {
   lastScanTime = new Date();
   log(`🔍 Scan [${label}] — paths: ${scanPaths.join(', ')}`);
   try {
-    let client = await ftpConnect();
-    try {
-      for (const p of scanPaths) {
-        const files = await listFtpRecursive(client, p);
+    let allFiles = [];
+    for (const p of scanPaths) {
+      let listClient;
+      try {
+        listClient = await ftpConnect();
+        const files = await listFtpRecursive(listClient, p);
         log(`   ${p} => ${files.length} file(s)`);
-        for (const f of files) {
-          if (client.closed) {
-            log('FTP connection lost, reconnecting...');
-            try { client.close(); } catch (_) {}
-            client = await ftpConnect();
-          }
-          await processFile(client, f);
-        }
+        allFiles = allFiles.concat(files);
+      } catch (err) {
+        log(`❌ FTP list error [${p}]:`, err.message);
+      } finally {
+        try { if (listClient) listClient.close(); } catch (_) {}
       }
-    } finally {
-      try { client.close(); } catch (_) {}
+    }
+    for (const f of allFiles) {
+      await processFile(f);
     }
     log(`✅ Scan [${label}] completed.`);
   } catch (err) {
-    log(`❌ Scan [${label}] FTP error:`, err.message);
+    log(`❌ Scan [${label}] error:`, err.message);
   } finally {
     scanning = false;
   }
@@ -538,18 +542,19 @@ const server = http.createServer(async (req, res) => {
       lastScanTime = new Date();
       log(`📤 Manual send dari UI — date=${date}`);
       try {
-        const client = await ftpConnect();
-        try {
-          let targets = Array.isArray(paths) && paths.length > 0 ? paths : null;
-          if (!targets) {
-            const sp = datePath(date);
-            targets = await listFtpRecursive(client, sp);
+        let targets = Array.isArray(paths) && paths.length > 0 ? paths : null;
+        if (!targets) {
+          const sp = datePath(date);
+          let listClient;
+          try {
+            listClient = await ftpConnect();
+            targets = await listFtpRecursive(listClient, sp);
             log(`   Listed ${targets.length} file(s) from ${sp}`);
+          } finally {
+            try { if (listClient) listClient.close(); } catch (_) {}
           }
-          for (const f of targets) await processFile(client, f);
-        } finally {
-          client.close();
         }
+        for (const f of targets) await processFile(f);
         log('✅ Manual send completed.');
       } catch (err) {
         log('❌ Manual send error:', err.message);
